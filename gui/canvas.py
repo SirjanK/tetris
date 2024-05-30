@@ -1,4 +1,5 @@
 import tkinter as tk
+from element.point import Point
 
 
 class Canvas:
@@ -10,7 +11,35 @@ class Canvas:
     def __init__(self, root: tk.Tk):
         self._root = root
 
-    def draw_canvas(self) -> tk.Canvas:
+        self._canvas = self._init_canvas()
+
+        # boolean bitmap indicating point presence or not
+        self._bitmap = []
+        for _ in range(self.W):
+            bitmap_row = [False] * self.H
+            self._bitmap.append(bitmap_row)
+
+    def raster_point(self, point: Point):
+        """
+        Raster a new point on the canvas. Note: this will error out if there is already a point at that location
+
+        :param point: point to raster
+        """
+
+        pass
+
+    def move_point(self, point: Point, x: int, y: int) -> bool:
+        """
+        Move a point already on the canvas
+        :param point: point to move
+        :param x: x coordinate to move the point
+        :param y: y coordinate to move the point
+        :return boolean flag indicating if the move was successful or not
+        """
+
+        pass
+
+    def _init_canvas(self) -> tk.Canvas:
         # Create a canvas widget
         canvas = tk.Canvas(
             self._root,
@@ -18,7 +47,6 @@ class Canvas:
             height=self.H * self.CELL_SIZE,
             bg='black')
         canvas.pack()
-
         # Draw the grid
         grid_color = '#555555'  # Light gray color
         for i in range(self.H + 1):
