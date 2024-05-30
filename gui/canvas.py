@@ -6,7 +6,7 @@ from typing import Tuple, Callable
 
 class Canvas:
     # Constants for grid dimensions
-    H = 20  # Height of the grid
+    H = 21  # Height of the grid
     W = 10  # Width of the grid
     CELL_SIZE = 40  # Size of each cell in pixels
     PADDING = 2  # Padding for rastering points
@@ -28,10 +28,7 @@ class Canvas:
         if not self.can_raster(point.x, point.y):
             return False
 
-        x1, y1, x2, y2 = self._get_rectangle_coordinates(point.x, point.y)
-        point.rectangle = self._canvas.create_rectangle(
-            x1, y1, x2, y2, outline=point.color, fill=point.color,
-        )
+        self._create_rectangle(point)
 
         return True
 
@@ -50,9 +47,9 @@ class Canvas:
 
         # otherwise, execute the move
         x1, y1, x2, y2 = self._get_rectangle_coordinates(x, y)
-        self._canvas.coords(point.rectangle, x1, y1, x2, y2)
 
         point.x, point.y = x, y
+        self._canvas.coords(point.rectangle, x1, y1, x2, y2)
 
     def translate_point(self, point: Point, delta_x: int, delta_y: int) -> None:
         """
@@ -132,6 +129,17 @@ class Canvas:
 
         return x1, y1, x2, y2
 
+    def _create_rectangle(self, point: Point) -> None:
+        """
+        Create rectangle for a point
+        :param point: point to create rectangle for
+        """
+
+        x1, y1, x2, y2 = self._get_rectangle_coordinates(point.x, point.y)
+        point.rectangle = self._canvas.create_rectangle(
+            x1, y1, x2, y2, outline=point.color, fill=point.color,
+        )
+
     def _is_inbounds(self, x: int, y: int) -> bool:
         """
         Checks if (x, y) coord is in range
@@ -143,12 +151,22 @@ class Canvas:
         return 0 <= x < self.W and 0 <= y < self.H
 
     def _init_canvas(self) -> tk.Canvas:
+        # Create a frame to act as a viewport
+        self.frame = tk.Frame(
+            self._root,
+            width=self.W * self.CELL_SIZE,
+            height=(self.H - 1) * self.CELL_SIZE,
+            bg='black'
+        )
+        self.frame.pack()
+
         # Create a canvas widget
         canvas = tk.Canvas(
             self._root,
             width=self.W * self.CELL_SIZE,
             height=self.H * self.CELL_SIZE,
-            bg='black')
+            bg='black',
+            highlightthickness=0)
         canvas.pack()
         # Draw the grid
         grid_color = '#555555'  # Light gray color
@@ -168,6 +186,9 @@ class Canvas:
                 self.H * self.CELL_SIZE,
                 fill=grid_color,
                 dash=(2, 2),)
+
+        # Position the canvas within the frame to hide the top row
+        canvas.place(x=0, y=-self.CELL_SIZE)
 
         canvas.focus_set()
 
