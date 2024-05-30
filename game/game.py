@@ -1,5 +1,11 @@
 from gui.canvas import Canvas
 from element.square_block import SquareBlock
+from element.l_block import LBlock
+from element.line_block import LineBlock
+from element.r_block import RBlock
+from element.s_block import SBlock
+from element.t_block import TBlock
+from element.two_block import TwoBlock
 import tkinter as tk
 import random
 
@@ -13,7 +19,13 @@ def launch_game():
 
     # instantiation functions for blocks
     block_builders = [
-        lambda: SquareBlock(canvas)
+        lambda: SquareBlock(canvas),
+        lambda: LBlock(canvas),
+        lambda: LineBlock(canvas),
+        lambda: RBlock(canvas),
+        lambda: SBlock(canvas),
+        lambda: TBlock(canvas),
+        lambda: TwoBlock(canvas),
     ]
 
     block = random.choice(block_builders)()
