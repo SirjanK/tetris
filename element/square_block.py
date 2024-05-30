@@ -13,5 +13,8 @@ class SquareBlock(Block):
             (half_width, 1),
         ]
 
+    def get_rotation_deltas(self) -> List[Tuple[int, int]]:
+        return [(0, 0)] * 4
+
     def get_color(self) -> str:
         return "#FFFF00"

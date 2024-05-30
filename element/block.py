@@ -27,6 +27,8 @@ class Block(ABC):
             x, y = point_loc
             self._points.append(Point(x, y, color))
 
+        self._rotation_state = 0  # rotation state modulo 4 (across four possible rotations)
+
     def raster(self) -> bool:
         """
         Raster the block
@@ -52,7 +54,7 @@ class Block(ABC):
         :return: bool indicating translation success
         """
 
-        # check that all points can be rastered
+        # check that all points can be translated
         for point in self._points:
             if not self._canvas.can_translate(point, delta_x, delta_y):
                 return False
@@ -60,6 +62,29 @@ class Block(ABC):
         # now translate all points
         for point in self._points:
             self._canvas.translate_point(point, delta_x, delta_y)
+
+        return True
+
+    def rotate(self) -> bool:
+        """
+        Rotate the block 90 deg
+        :return: bool indicating rotation success
+        """
+
+        rotation_deltas = self.get_rotation_deltas()
+
+        # check that all points can be translated
+        for (point, deltas) in zip(self._points, rotation_deltas):
+            delta_x, delta_y = deltas
+            if not self._canvas.can_translate(point, delta_x, delta_y):
+                return False
+
+        # now translate all points
+        for (point, deltas) in zip(self._points, rotation_deltas):
+            delta_x, delta_y = deltas
+            self._canvas.translate_point(point, delta_x, delta_y)
+
+        self._rotation_state = (self._rotation_state + 1) % 4
 
         return True
 
@@ -76,6 +101,15 @@ class Block(ABC):
         """
         Get the initial point locations for this block
         :return: List of tuples containing point coordinates
+        """
+
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_rotation_deltas(self) -> List[Tuple[int, int]]:
+        """
+        Get translation deltas for each block after rotating by 90 degrees
+        :return: List of delta_x, delta_y
         """
 
         raise NotImplementedError()

@@ -32,8 +32,8 @@ def launch_game():
 
     block.raster()
 
-    def move_up(event: tk.Event) -> None:
-        block.translate(0, -1)
+    def rotate(event: tk.Event) -> None:
+        block.rotate()
 
     def move_down(event: tk.Event) -> None:
         nonlocal block
@@ -49,7 +49,7 @@ def launch_game():
     def move_right(event: tk.Event) -> None:
         block.translate(1, 0)
 
-    canvas.bind_key_listener("<Up>", move_up)
+    canvas.bind_key_listener("<Up>", rotate)
     canvas.bind_key_listener("<Down>", move_down)
     canvas.bind_key_listener("<Left>", move_left)
     canvas.bind_key_listener("<Right>", move_right)

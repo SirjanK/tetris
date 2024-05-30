@@ -13,5 +13,35 @@ class RBlock(Block):
             (half_width, 0),
         ]
 
+    def get_rotation_deltas(self) -> List[Tuple[int, int]]:
+        if self._rotation_state == 0:
+            return [
+                (1, -1),
+                (0, 0),
+                (-1, 1),
+                (0, 2),
+            ]
+        elif self._rotation_state == 1:
+            return [
+                (1, 1),
+                (0, 0),
+                (-1, -1),
+                (-2, 0),
+            ]
+        elif self._rotation_state == 2:
+            return [
+                (-1, 1),
+                (0, 0),
+                (1, -1),
+                (0, -2),
+            ]
+        elif self._rotation_state == 3:
+            return [
+                (-1, -1),
+                (0, 0),
+                (1, 1),
+                (2, 0),
+            ]
+
     def get_color(self) -> str:
         return "#FF7F00"

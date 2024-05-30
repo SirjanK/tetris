@@ -13,5 +13,21 @@ class SBlock(Block):
             (half_width, 0),
         ]
 
+    def get_rotation_deltas(self) -> List[Tuple[int, int]]:
+        if self._rotation_state == 0 or self._rotation_state == 2:
+            return [
+                (1, -2),
+                (0, -1),
+                (1, 0),
+                (0, 1),
+            ]
+        else:
+            return [
+                (-1, 2),
+                (0, 1),
+                (-1, 0),
+                (0, -1),
+            ]
+
     def get_color(self) -> str:
         return "#00FF00"

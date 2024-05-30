@@ -13,5 +13,21 @@ class TwoBlock(Block):
             (half_width, 1),
         ]
 
+    def get_rotation_deltas(self) -> List[Tuple[int, int]]:
+        if self._rotation_state == 0 or self._rotation_state == 2:
+            return [
+                (2, -1),
+                (1, 0),
+                (0, -1),
+                (-1, 0),
+            ]
+        else:
+            return [
+                (-2, 1),
+                (-1, 0),
+                (0, 1),
+                (1, 0),
+            ]
+
     def get_color(self) -> str:
         return "#FF0000"
