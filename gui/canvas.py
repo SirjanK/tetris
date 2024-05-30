@@ -6,7 +6,8 @@ class Canvas:
     # Constants for grid dimensions
     H = 20  # Height of the grid
     W = 10  # Width of the grid
-    CELL_SIZE = 20  # Size of each cell in pixels
+    CELL_SIZE = 40  # Size of each cell in pixels
+    PADDING = 2  # Padding for rastering points
 
     def __init__(self, root: tk.Tk):
         self._root = root
@@ -19,14 +20,25 @@ class Canvas:
             bitmap_row = [False] * self.H
             self._bitmap.append(bitmap_row)
 
-    def raster_point(self, point: Point):
+    def raster_point(self, point: Point) -> int:
         """
         Raster a new point on the canvas. Note: this will error out if there is already a point at that location
 
         :param point: point to raster
+        :return: ID of the rastered rectangle
         """
 
-        pass
+        assert 0 <= point.x < self.W, f"x coordinate {point.x} must be between 0 and {self.W - 1} inclusive"
+        assert 0 <= point.y < self.H, f"y coordinate {point.y} must be between 0 and {self.H - 1} inclusive"
+
+        x1 = point.x * self.CELL_SIZE + self.PADDING
+        y1 = point.y * self.CELL_SIZE + self.PADDING
+        x2 = (point.x + 1) * self.CELL_SIZE - self.PADDING
+        y2 = (point.y + 1) * self.CELL_SIZE - self.PADDING
+
+        return self._canvas.create_rectangle(
+            x1, y1, x2, y2, outline=point.color, fill=point.color,
+        )
 
     def move_point(self, point: Point, x: int, y: int) -> bool:
         """
