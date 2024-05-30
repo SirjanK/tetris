@@ -1,6 +1,7 @@
 from gui.canvas import Canvas
 from element.square_block import SquareBlock
 import tkinter as tk
+import random
 
 
 def launch_game():
@@ -10,8 +11,12 @@ def launch_game():
 
     canvas = Canvas(root)
 
-    # Create an example point
-    block = SquareBlock(canvas, "#FF0000")
+    # instantiation functions for blocks
+    block_builders = [
+        lambda: SquareBlock(canvas)
+    ]
+
+    block = random.choice(block_builders)()
 
     block.raster()
 
@@ -19,7 +24,12 @@ def launch_game():
         block.translate(0, -1)
 
     def move_down(event: tk.Event) -> None:
-        block.translate(0, 1)
+        nonlocal block
+        if not block.translate(0, 1):
+            # if we could not translate, delete this block, and assign a new one
+            block.remove()
+            block = random.choice(block_builders)()
+            block.raster()
 
     def move_left(event: tk.Event) -> None:
         block.translate(-1, 0)

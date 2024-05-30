@@ -76,6 +76,14 @@ class Canvas:
 
         point.x, point.y = new_x, new_y
 
+    def remove_point(self, point: Point) -> None:
+        """
+        Removes a point from the canvas
+        :param point: point to remove
+        """
+
+        self._canvas.delete(point.rectangle)
+
     def can_translate(self, point: Point, delta_x: int, delta_y: int) -> bool:
         """
         Determine if we can translate this point

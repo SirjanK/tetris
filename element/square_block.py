@@ -12,3 +12,6 @@ class SquareBlock(Block):
             (half_width - 1, 1),
             (half_width, 1),
         ]
+
+    def get_color(self) -> str:
+        return "#FFFF00"

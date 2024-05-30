@@ -12,7 +12,7 @@ class Block(ABC):
     Each block consists of underlying points and belongs to a canvas.
     """
 
-    def __init__(self, canvas: Canvas, color: str):
+    def __init__(self, canvas: Canvas):
         """
         Initializes the block
         :param canvas: canvas this block belongs to
@@ -22,6 +22,7 @@ class Block(ABC):
         self._canvas = canvas
 
         self._points = []
+        color = self.get_color()
         for point_loc in self.get_init_point_locations():
             x, y = point_loc
             self._points.append(Point(x, y, color))
@@ -62,11 +63,28 @@ class Block(ABC):
 
         return True
 
+    def remove(self) -> None:
+        """
+        Remove the block
+        """
+
+        for point in self._points:
+            self._canvas.remove_point(point)
+
     @abstractmethod
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
         """
         Get the initial point locations for this block
         :return: List of tuples containing point coordinates
+        """
+
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_color(self) -> str:
+        """
+        Return the hex color of the block
+        :return: hex color
         """
 
         raise NotImplementedError()
