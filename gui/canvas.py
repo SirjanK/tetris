@@ -16,28 +16,24 @@ class Canvas:
 
         self._canvas = self._init_canvas()
 
-        # boolean bitmap indicating point presence or not
-        self._bitmap = []
-        for _ in range(self.W):
-            bitmap_row = [False] * self.H
-            self._bitmap.append(bitmap_row)
-
-    def raster_point(self, point: Point) -> None:
+    def raster_point(self, point: Point) -> bool:
         """
         Raster a new point on the canvas. Note: this will error out if there is already a point at that location
+        No-op if it cannot raster the point
 
         :param point: point to raster
+        :return: bool indicating raster success
         """
 
-        assert self._is_inbounds(point.x, point.y), f"point of coordinate {(point.x, point.y)} must be in bounds of the {self.H} by {self.W} grid"
+        if not self.can_raster(point.x, point.y):
+            return False
 
         x1, y1, x2, y2 = self._get_rectangle_coordinates(point.x, point.y)
         point.rectangle = self._canvas.create_rectangle(
             x1, y1, x2, y2, outline=point.color, fill=point.color,
         )
 
-        # update the bitmap
-        self._bitmap[point.x][point.y] = True
+        return True
 
     def move_point(self, point: Point, x: int, y: int) -> None:
         """
@@ -46,37 +42,28 @@ class Canvas:
         :param x: x coordinate to move the point
         :param y: y coordinate to move the point
 
-        Raises an exception if you try moving to an out-of-bounds location or an item already exists there
+        No-op if we cannot move
         """
 
-        if not self._is_inbounds(x, y):
-            raise Exception(f"{(x, y)} not in range")
-        if self._bitmap[x][y]:
-            raise Exception(f"{(x, y)} already is occupied")
+        if not self.can_raster(x, y):
+            return None
 
         # otherwise, execute the move
         x1, y1, x2, y2 = self._get_rectangle_coordinates(x, y)
         self._canvas.coords(point.rectangle, x1, y1, x2, y2)
 
-        self._bitmap[point.x][point.y] = False
-        self._bitmap[x][y] = True
-
         point.x, point.y = x, y
 
-    def translate_point(self, point: Point, delta_x: int, delta_y: int) -> bool:
+    def translate_point(self, point: Point, delta_x: int, delta_y: int) -> None:
         """
-        Try to translate a point in the direction delta_x, delta_y
+        Try to translate a point in the direction delta_x, delta_y. No-op if we cannot translate
         :param point: point to translate
         :param delta_x: delta to move in the x dir
         :param delta_y: delta to move in the y dir
-        :return: bool if the translation can go through (in bounds and no item exists there)
         """
 
-        new_x = point.x + delta_x
-        new_y = point.y + delta_y
-
-        if not self._is_inbounds(new_x, new_y) or self._bitmap[new_x][new_y]:
-            return False
+        if not self.can_translate(point, delta_x, delta_y):
+            return
 
         self._canvas.move(
             point.rectangle,
@@ -84,12 +71,34 @@ class Canvas:
             delta_y * self.CELL_SIZE,
         )
 
-        self._bitmap[point.x][point.y] = False
-        self._bitmap[new_x][new_y] = True
+        new_x = point.x + delta_x
+        new_y = point.y + delta_y
 
         point.x, point.y = new_x, new_y
 
-        return True
+    def can_translate(self, point: Point, delta_x: int, delta_y: int) -> bool:
+        """
+        Determine if we can translate this point
+        :param point: point to translate
+        :param delta_x: delta in x dir
+        :param delta_y: delta in y dir
+        :return: bool indicating whether we can translate or not
+        """
+
+        new_x = point.x + delta_x
+        new_y = point.y + delta_y
+
+        return self.can_raster(new_x, new_y)
+
+    def can_raster(self, x: int, y: int) -> bool:
+        """
+        Determine if we can raster an (x, y) (in bounds and nothing present)
+        :param x: x coord
+        :param y: y coord
+        :return: bool indicating if we can raster or not
+        """
+
+        return self._is_inbounds(x, y)
 
     def bind_key_listener(self, key: str, fn: Callable) -> None:
         """

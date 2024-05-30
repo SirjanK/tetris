@@ -1,16 +1,72 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
-import tkinter as tk
+from typing import Tuple, List
+
 from gui.canvas import Canvas
+from element.point import Point
 
 
 class Block(ABC):
     """
     The Block class represents a tetris block that we can move
-    Each block consists of underlying rectangles and belongs to a canvas. This is all abstracted away to the user.
+    Each block consists of underlying points and belongs to a canvas.
     """
 
-    CELL_SIZE = Canvas.CELL_SIZE
+    def __init__(self, canvas: Canvas, color: str):
+        """
+        Initializes the block
+        :param canvas: canvas this block belongs to
+        :param color: color of the block
+        """
 
-    def __init__(self, canvas: tk.Canvas):
         self._canvas = canvas
+
+        self._points = []
+        for point_loc in self.get_init_point_locations():
+            x, y = point_loc
+            self._points.append(Point(x, y, color))
+
+    def raster(self) -> bool:
+        """
+        Raster the block
+        :return: bool flag indicating success
+        """
+
+        # iterate through the points to ensure you can raster it
+        for point in self._points:
+            if not self._canvas.can_raster(point.x, point.y):
+                return False
+
+        # now raster it
+        for point in self._points:
+            self._canvas.raster_point(point)
+
+        return True
+
+    def translate(self, delta_x: int, delta_y: int) -> bool:
+        """
+        Translate the block by delta_x and delta_y. This only succeeds if all underlying translations succeed
+        :param delta_x: delta to move in x dir
+        :param delta_y: delta to move in y dir
+        :return: bool indicating translation success
+        """
+
+        # check that all points can be rastered
+        for point in self._points:
+            if not self._canvas.can_translate(point, delta_x, delta_y):
+                return False
+
+        # now translate all points
+        for point in self._points:
+            self._canvas.translate_point(point, delta_x, delta_y)
+
+        return True
+
+    @abstractmethod
+    def get_init_point_locations(self) -> List[Tuple[int, int]]:
+        """
+        Get the initial point locations for this block
+        :return: List of tuples containing point coordinates
+        """
+
+        raise NotImplementedError()
