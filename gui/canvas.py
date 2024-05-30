@@ -1,7 +1,7 @@
 import tkinter as tk
 from element.point import Point
 
-from typing import Tuple
+from typing import Tuple, Callable
 
 
 class Canvas:
@@ -91,6 +91,15 @@ class Canvas:
 
         return True
 
+    def bind_key_listener(self, key: str, fn: Callable) -> None:
+        """
+        Binds a keyboard listener
+        :param key: keyboard key
+        :param fn: callback function
+        """
+
+        self._canvas.bind(key, fn)
+
     def _get_rectangle_coordinates(self, x: int, y: int) -> Tuple[int, int, int, int]:
         """
         Get the pixel rectangle coordinates given an x, y
@@ -142,5 +151,7 @@ class Canvas:
                 self.H * self.CELL_SIZE,
                 fill=grid_color,
                 dash=(2, 2),)
+
+        canvas.focus_set()
 
         return canvas
