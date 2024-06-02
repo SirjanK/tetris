@@ -5,6 +5,10 @@ from typing import Tuple, Callable
 
 
 class Canvas:
+    """
+    The Canvas class manages the grid for tetris and abstracts away the underlying logic with tkinter.
+    """
+
     # Constants for grid dimensions
     H = 21  # Height of the grid
     W = 10  # Width of the grid
@@ -15,6 +19,11 @@ class Canvas:
         self._root = root
 
         self._canvas = self._init_canvas()
+
+        # bitmap containing True if grid cell x, y is occupied
+        self._bitmap = []
+        for _ in range(self.W):
+            self._bitmap.append([False] * self.H)
 
     def raster_point(self, point: Point) -> bool:
         """
@@ -29,6 +38,8 @@ class Canvas:
             return False
 
         self._create_rectangle(point)
+
+        self._set_bitmap(point)
 
         return True
 
@@ -48,30 +59,34 @@ class Canvas:
         # otherwise, execute the move
         x1, y1, x2, y2 = self._get_rectangle_coordinates(x, y)
 
+        self._unset_bitmap(point)
         point.x, point.y = x, y
         self._canvas.coords(point.rectangle, x1, y1, x2, y2)
+        self._set_bitmap(point)
 
-    def translate_point(self, point: Point, delta_x: int, delta_y: int) -> None:
+    def translate_point(self, point: Point, dx: int, dy: int) -> None:
         """
-        Try to translate a point in the direction delta_x, delta_y. No-op if we cannot translate
+        Try to translate a point in the direction dx, dy. No-op if we cannot translate
         :param point: point to translate
-        :param delta_x: delta to move in the x dir
-        :param delta_y: delta to move in the y dir
+        :param dx: delta to move in the x dir
+        :param dy: delta to move in the y dir
         """
 
-        if not self.can_translate(point, delta_x, delta_y):
+        if not self.can_translate(point, dx, dy):
             return
 
         self._canvas.move(
             point.rectangle,
-            delta_x * self.CELL_SIZE,
-            delta_y * self.CELL_SIZE,
+            dx * self.CELL_SIZE,
+            dy * self.CELL_SIZE,
         )
 
-        new_x = point.x + delta_x
-        new_y = point.y + delta_y
+        new_x = point.x + dx
+        new_y = point.y + dy
 
+        self._unset_bitmap(point)
         point.x, point.y = new_x, new_y
+        self._set_bitmap(point)
 
     def remove_point(self, point: Point) -> None:
         """
@@ -80,18 +95,19 @@ class Canvas:
         """
 
         self._canvas.delete(point.rectangle)
+        self._unset_bitmap(point)
 
-    def can_translate(self, point: Point, delta_x: int, delta_y: int) -> bool:
+    def can_translate(self, point: Point, dx: int, dy: int) -> bool:
         """
         Determine if we can translate this point
         :param point: point to translate
-        :param delta_x: delta in x dir
-        :param delta_y: delta in y dir
+        :param dx: delta in x dir
+        :param dy: delta in y dir
         :return: bool indicating whether we can translate or not
         """
 
-        new_x = point.x + delta_x
-        new_y = point.y + delta_y
+        new_x = point.x + dx
+        new_y = point.y + dy
 
         return self.can_raster(new_x, new_y)
 
@@ -104,6 +120,20 @@ class Canvas:
         """
 
         return self._is_inbounds(x, y)
+
+    def is_occupied(self, x: int, y: int) -> bool:
+        """
+        Determine if the (x, y) point is already occupied
+        Raises an error if (x, y) is out of range
+        :param x: x coord
+        :param y: y coord
+        :return: bool indicating if location is occupied or not
+        """
+
+        if not self._is_inbounds(x, y):
+            raise Exception(f"{x, y} is not in bounds")
+
+        return self._bitmap[x][y]
 
     def bind_key_listener(self, key: str, fn: Callable) -> None:
         """
@@ -193,3 +223,19 @@ class Canvas:
         canvas.focus_set()
 
         return canvas
+
+    def _set_bitmap(self, point: Point) -> None:
+        """
+        Set point location in bitmap to True
+        :param point: point
+        """
+
+        self._bitmap[point.x][point.y] = True
+
+    def _unset_bitmap(self, point: Point) -> None:
+        """
+        Set point location in bitmap to False
+        :param point: point
+        """
+
+        self._bitmap[point.x][point.y] = False

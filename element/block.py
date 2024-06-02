@@ -16,12 +16,13 @@ class Block(ABC):
         """
         Initializes the block
         :param canvas: canvas this block belongs to
-        :param color: color of the block
         """
 
         self._canvas = canvas
 
+        # list of points
         self._points = []
+
         color = self.get_color()
         for point_loc in self.get_init_point_locations():
             x, y = point_loc
@@ -37,7 +38,7 @@ class Block(ABC):
 
         # iterate through the points to ensure you can raster it
         for point in self._points:
-            if not self._canvas.can_raster(point.x, point.y):
+            if not self._can_raster(point):
                 return False
 
         # now raster it
@@ -46,22 +47,22 @@ class Block(ABC):
 
         return True
 
-    def translate(self, delta_x: int, delta_y: int) -> bool:
+    def translate(self, dx: int, dy: int) -> bool:
         """
-        Translate the block by delta_x and delta_y. This only succeeds if all underlying translations succeed
-        :param delta_x: delta to move in x dir
-        :param delta_y: delta to move in y dir
+        Translate the block by dx and dy. This only succeeds if all underlying translations succeed
+        :param dx: delta to move in x dir
+        :param dy: delta to move in y dir
         :return: bool indicating translation success
         """
 
         # check that all points can be translated
         for point in self._points:
-            if not self._canvas.can_translate(point, delta_x, delta_y):
+            if not self._can_translate(point, dx, dy):
                 return False
 
         # now translate all points
         for point in self._points:
-            self._canvas.translate_point(point, delta_x, delta_y)
+            self._canvas.translate_point(point, dx, dy)
 
         return True
 
@@ -75,14 +76,14 @@ class Block(ABC):
 
         # check that all points can be translated
         for (point, deltas) in zip(self._points, rotation_deltas):
-            delta_x, delta_y = deltas
-            if not self._canvas.can_translate(point, delta_x, delta_y):
+            dx, dy = deltas
+            if not self._can_translate(point, dx, dy):
                 return False
 
         # now translate all points
         for (point, deltas) in zip(self._points, rotation_deltas):
-            delta_x, delta_y = deltas
-            self._canvas.translate_point(point, delta_x, delta_y)
+            dx, dy = deltas
+            self._canvas.translate_point(point, dx, dy)
 
         self._rotation_state = (self._rotation_state + 1) % 4
 
@@ -109,7 +110,7 @@ class Block(ABC):
     def get_rotation_deltas(self) -> List[Tuple[int, int]]:
         """
         Get translation deltas for each block after rotating by 90 degrees
-        :return: List of delta_x, delta_y
+        :return: List of dx, dy
         """
 
         raise NotImplementedError()
@@ -122,3 +123,48 @@ class Block(ABC):
         """
 
         raise NotImplementedError()
+
+    def _can_raster(self, point: Point) -> bool:
+        """
+        Helper method to determine if we can raster a point
+        Checks,
+          1. Can the location be rastered?
+          2. Is the location not occupied? However, it can be occupied by other points belonging to the block
+        :param point: point to check
+        :return: bool indicating if we can place a point belonging to this block at this location
+        """
+
+        return self._canvas.can_raster(point.x, point.y) and self._is_loc_free(point.x, point.y)
+
+    def _can_translate(self, point: Point, dx: int, dy: int) -> bool:
+        """
+        Helper method to determine if we can translate a point by some (dx, dy)
+        :param point: point to check
+        :param dx: delta in x dir
+        :param dy: delta in y dir
+        :return: bool indicating if we can translate a point belonging to this block at this location
+        """
+
+        return self._canvas.can_translate(point, dx, dy) and self._is_loc_free(point.x + dx, point.y + dy)
+
+    def _is_loc_free(self, x: int, y: int) -> bool:
+        """
+        Helper method to determine if the (x, y) loc is free for this block.
+        It checks if the canvas has marked this location as occupied but also that this location isn't already part
+        of this block's points
+        :param x: x coord
+        :param y: y coord
+        :return: bool indicating if (x, y) loc is free for this block
+        """
+
+        if not self._canvas.is_occupied(x, y):
+            return True
+
+        # otherwise, iterate through the points to see if x, y matches any of the locations
+        # we could have used a set to store locations, but that adds unnecessary overhead when len(points) == 4
+        loc = (x, y)
+        for point in self._points:
+            if loc == (point.x, point.y):
+                return True
+
+        return False
