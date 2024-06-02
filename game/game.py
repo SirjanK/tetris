@@ -1,11 +1,13 @@
 from gui.canvas import Canvas
-from element.square_block import SquareBlock
-from element.l_block import LBlock
-from element.line_block import LineBlock
-from element.r_block import RBlock
-from element.s_block import SBlock
-from element.t_block import TBlock
-from element.two_block import TwoBlock
+from element.tetris_blocks import (
+    SquareBlock,
+    LBlock,
+    LineBlock,
+    RBlock,
+    SBlock,
+    TBlock,
+    TwoBlock,
+)
 import tkinter as tk
 import random
 
