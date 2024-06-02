@@ -1,4 +1,5 @@
 from gui.canvas import Canvas
+from element.block import Block
 from element.tetris_blocks import (
     SquareBlock,
     LBlock,
@@ -12,55 +13,120 @@ import tkinter as tk
 import random
 
 
-def launch_game():
-    # Create the main window
-    root = tk.Tk()
-    root.title("Tetris")
-
-    canvas = Canvas(root)
+class Game:
+    """
+    Manages a single game session.
+    """
 
     # instantiation functions for blocks
-    block_builders = [
-        lambda: SquareBlock(canvas),
-        lambda: LBlock(canvas),
-        lambda: LineBlock(canvas),
-        lambda: RBlock(canvas),
-        lambda: SBlock(canvas),
-        lambda: TBlock(canvas),
-        lambda: TwoBlock(canvas),
+    BLOCK_BUILDERS = [
+        lambda canvas: SquareBlock(canvas),
+        lambda canvas: LBlock(canvas),
+        lambda canvas: LineBlock(canvas),
+        lambda canvas: RBlock(canvas),
+        lambda canvas: SBlock(canvas),
+        lambda canvas: TBlock(canvas),
+        lambda canvas: TwoBlock(canvas),
     ]
 
-    block = random.choice(block_builders)()
+    def __init__(self):
+        self.score = 0
 
-    block.raster()
+        self._root = tk.Tk()
+        self._root.title("Tetris")
 
-    def rotate(event: tk.Event) -> None:
-        block.rotate()
+        self._canvas = Canvas(self._root)
 
-    def move_down(event: tk.Event) -> None:
-        nonlocal block
-        if not block.translate(0, 1):
+        # initial block
+        self._active_block = self._get_random_block()
+
+        # key bindings
+        self._bind_keys()
+
+    def start(self) -> None:
+        """
+        Start the game
+        """
+
+        self._active_block.raster()
+
+        self._root.mainloop()
+
+    def _bind_keys(self) -> None:
+        """
+        Helper method to bind keys
+        """
+
+        self._canvas.bind_key_listener("<Up>", self._rotate)
+        self._canvas.bind_key_listener("<Down>", self._move_down)
+        self._canvas.bind_key_listener("<Left>", self._move_left)
+        self._canvas.bind_key_listener("<Right>", self._move_right)
+        self._canvas.bind_key_listener("<space>", self._move_to_bottom)
+
+    def _rotate(self, event: tk.Event) -> None:
+        """
+        Rotate the active block
+        :param event: event
+        """
+
+        self._active_block.rotate()
+
+    def _move_down(self, event: tk.Event) -> None:
+        """
+        Move down the active block
+        :param event: event
+        """
+
+        if not self._active_block.translate(0, 1):
             # if we could not translate, assign a new one
-            block = random.choice(block_builders)()
-            block.raster()
+            # TODO(sirjan.kafle) revisit this logic after we implement timer
+            self._spawn_next_block()
 
-    def move_left(event: tk.Event) -> None:
-        block.translate(-1, 0)
+    def _move_left(self, event: tk.Event) -> None:
+        """
+        Move left the active block
+        :param event: event
+        """
 
-    def move_right(event: tk.Event) -> None:
-        block.translate(1, 0)
+        self._active_block.translate(-1, 0)
 
-    def move_to_bottom(event: tk.Event) -> None:
-        while block.translate(0, 1):
+    def _move_right(self, event: tk.Event) -> None:
+        """
+        Move right the active block
+        :param event: event
+        """
+
+        self._active_block.translate(1, 0)
+
+    def _move_to_bottom(self, event: tk.Event) -> None:
+        """
+        Move to the bottom the active block
+        :param event: event
+        """
+
+        while self._active_block.translate(0, 1):
             continue
 
-        move_down(event)
+        # to trigger reset
+        self._move_down(event)
 
-    canvas.bind_key_listener("<Up>", rotate)
-    canvas.bind_key_listener("<Down>", move_down)
-    canvas.bind_key_listener("<Left>", move_left)
-    canvas.bind_key_listener("<Right>", move_right)
-    canvas.bind_key_listener("<space>", move_to_bottom)
+    def _spawn_next_block(self) -> None:
+        """
+        Spawn next block and raster it
+        """
 
-    # Run the application
-    root.mainloop()
+        self._active_block = self._get_random_block()
+        self._active_block.raster()
+
+    def _get_random_block(self) -> Block:
+        """
+        Get a random block instance
+        """
+
+        return random.choice(self.BLOCK_BUILDERS)(self._canvas)
+
+
+def launch_game():
+    game = Game()
+
+    game.start()
