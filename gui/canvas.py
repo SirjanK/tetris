@@ -20,10 +20,11 @@ class Canvas:
 
         self._canvas = self._init_canvas()
 
-        # bitmap containing True if grid cell x, y is occupied
-        self._bitmap = []
+        # occupancies containing number of points in x, y location (for tetris, this is in the range [0, 2]. 2
+        # can happen in the intermediate state where we're in the middle of moving an existing block)
+        self._occupancies = []
         for _ in range(self.W):
-            self._bitmap.append([False] * self.H)
+            self._occupancies.append([0] * self.H)
 
     def raster_point(self, point: Point) -> bool:
         """
@@ -39,7 +40,7 @@ class Canvas:
 
         self._create_rectangle(point)
 
-        self._set_bitmap(point)
+        self._add_occupancy(point)
 
         return True
 
@@ -59,10 +60,10 @@ class Canvas:
         # otherwise, execute the move
         x1, y1, x2, y2 = self._get_rectangle_coordinates(x, y)
 
-        self._unset_bitmap(point)
+        self._remove_occupancy(point)
         point.x, point.y = x, y
         self._canvas.coords(point.rectangle, x1, y1, x2, y2)
-        self._set_bitmap(point)
+        self._add_occupancy(point)
 
     def translate_point(self, point: Point, dx: int, dy: int) -> None:
         """
@@ -84,9 +85,9 @@ class Canvas:
         new_x = point.x + dx
         new_y = point.y + dy
 
-        self._unset_bitmap(point)
+        self._remove_occupancy(point)
         point.x, point.y = new_x, new_y
-        self._set_bitmap(point)
+        self._add_occupancy(point)
 
     def remove_point(self, point: Point) -> None:
         """
@@ -95,7 +96,7 @@ class Canvas:
         """
 
         self._canvas.delete(point.rectangle)
-        self._unset_bitmap(point)
+        self._remove_occupancy(point)
 
     def can_translate(self, point: Point, dx: int, dy: int) -> bool:
         """
@@ -133,7 +134,7 @@ class Canvas:
         if not self._is_inbounds(x, y):
             raise Exception(f"{x, y} is not in bounds")
 
-        return self._bitmap[x][y]
+        return self._occupancies[x][y] > 0
 
     def bind_key_listener(self, key: str, fn: Callable) -> None:
         """
@@ -224,18 +225,18 @@ class Canvas:
 
         return canvas
 
-    def _set_bitmap(self, point: Point) -> None:
+    def _add_occupancy(self, point: Point) -> None:
         """
-        Set point location in bitmap to True
+        Add to point location in occupancies
         :param point: point
         """
 
-        self._bitmap[point.x][point.y] = True
+        self._occupancies[point.x][point.y] += 1
 
-    def _unset_bitmap(self, point: Point) -> None:
+    def _remove_occupancy(self, point: Point) -> None:
         """
-        Set point location in bitmap to False
+        Subtract point location in occupancies
         :param point: point
         """
 
-        self._bitmap[point.x][point.y] = False
+        self._occupancies[point.x][point.y] -= 1

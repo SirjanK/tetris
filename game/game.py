@@ -48,11 +48,17 @@ def launch_game():
     def move_right(event: tk.Event) -> None:
         block.translate(1, 0)
 
+    def move_to_bottom(event: tk.Event) -> None:
+        while block.translate(0, 1):
+            continue
+
+        move_down(event)
+
     canvas.bind_key_listener("<Up>", rotate)
     canvas.bind_key_listener("<Down>", move_down)
     canvas.bind_key_listener("<Left>", move_left)
     canvas.bind_key_listener("<Right>", move_right)
-    # canvas.bind_key_listener("<space>", move_to_bottom)
+    canvas.bind_key_listener("<space>", move_to_bottom)
 
     # Run the application
     root.mainloop()
