@@ -38,8 +38,7 @@ def launch_game():
     def move_down(event: tk.Event) -> None:
         nonlocal block
         if not block.translate(0, 1):
-            # if we could not translate, delete this block, and assign a new one
-            block.remove()
+            # if we could not translate, assign a new one
             block = random.choice(block_builders)()
             block.raster()
 
