@@ -1,7 +1,7 @@
 import tkinter as tk
 from element.point import Point
 
-from typing import Tuple, Callable
+from typing import Tuple, Callable, List, Optional
 
 
 class Canvas:
@@ -20,11 +20,16 @@ class Canvas:
 
         self._canvas = self._init_canvas()
 
-        # occupancies containing number of points in x, y location (for tetris, this is in the range [0, 2]. 2
-        # can happen in the intermediate state where we're in the middle of moving an existing block)
-        self._occupancies = []
-        for _ in range(self.W):
-            self._occupancies.append([0] * self.H)
+        # H x W array holding points at those locations, None if no point
+        self._points: List[List[Optional[Point]]] = []
+        for _ in range(self.H):
+            self._points.append([None] * self.W)
+
+        # row counts
+        self._row_counts = [0] * self.H
+
+        # helper instance that flags the row indices that are full
+        self._full_rows = set()
 
     def raster_point(self, point: Point) -> bool:
         """
@@ -131,10 +136,7 @@ class Canvas:
         :return: bool indicating if location is occupied or not
         """
 
-        if not self._is_inbounds(x, y):
-            raise Exception(f"{x, y} is not in bounds")
-
-        return self._occupancies[x][y] > 0
+        return self.get_point(x, y) is not None
 
     def bind_key_listener(self, key: str, fn: Callable) -> None:
         """
@@ -144,6 +146,45 @@ class Canvas:
         """
 
         self._canvas.bind(key, fn)
+
+    def get_point(self, x: int, y: int) -> Optional[Point]:
+        """
+        Gets points at a location
+        :param x: x coord
+        :param y: y coord
+        :return: points at location
+        """
+
+        if not self._is_inbounds(x, y):
+            raise Exception(f"{x, y} is not in bounds")
+
+        return self._points[y][x]
+
+    def clear_rows(self) -> False:
+        """
+        Clear any full rows and shift downwards.
+        """
+
+        # sort
+        row_indices = sorted(self._full_rows)
+        for full_row_idx in row_indices:
+            for point in self._points[full_row_idx]:
+                self.remove_point(point)
+
+        # amount to shift by
+        shift_amt = 1
+        for idx in range(len(row_indices)):
+            row_idx = row_indices[idx]
+            next_row_idx = row_indices[idx + 1] if idx < len(row_idx) - 1 else self.H
+
+            for tracker in range(row_idx, next_row_idx):
+                # shift row down by shift_amt
+                for point in self._points[tracker]:
+                    self.translate_point(point, dx=0, dy=shift_amt)
+
+            shift_amt += 1
+
+        self._full_rows.clear()
 
     def _get_rectangle_coordinates(self, x: int, y: int) -> Tuple[int, int, int, int]:
         """
@@ -227,16 +268,24 @@ class Canvas:
 
     def _add_occupancy(self, point: Point) -> None:
         """
-        Add to point location in occupancies
+        Add to point location
         :param point: point
         """
 
-        self._occupancies[point.x][point.y] += 1
+        prev_occupied = self.is_occupied(point.x, point.y)
+        self._points[point.y][point.x] = point
+        if not prev_occupied:
+            self._row_counts[point.y] += 1
+            if self._row_counts[point.y] >= self.W:
+                self._full_rows.add(point.y)
 
     def _remove_occupancy(self, point: Point) -> None:
         """
-        Subtract point location in occupancies
+        Remove point from point location trackers
         :param point: point
         """
 
-        self._occupancies[point.x][point.y] -= 1
+        self._points[point.y][point.x] = None
+        self._row_counts[point.y] -= 1
+        if self._row_counts[point.y] == self.W - 1:
+            self._full_rows.remove(point.y)

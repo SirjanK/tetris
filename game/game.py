@@ -77,10 +77,10 @@ class Game:
         :param event: event
         """
 
-        if not self._active_block.translate(0, 1):
+        if not self._active_block.translate(dx=0, dy=1):
             # if we could not translate, assign a new one
-            # TODO(sirjan.kafle) revisit this logic after we implement timer
-            self._spawn_next_block()
+            # TODO revisit this logic after we implement timer
+            self._next_block_state()
 
     def _move_left(self, event: tk.Event) -> None:
         """
@@ -88,7 +88,7 @@ class Game:
         :param event: event
         """
 
-        self._active_block.translate(-1, 0)
+        self._active_block.translate(dx=-1, dy=0)
 
     def _move_right(self, event: tk.Event) -> None:
         """
@@ -96,7 +96,7 @@ class Game:
         :param event: event
         """
 
-        self._active_block.translate(1, 0)
+        self._active_block.translate(dx=1, dy=0)
 
     def _move_to_bottom(self, event: tk.Event) -> None:
         """
@@ -104,17 +104,18 @@ class Game:
         :param event: event
         """
 
-        while self._active_block.translate(0, 1):
+        while self._active_block.translate(dx=0, dy=1):
             continue
 
         # to trigger reset
         self._move_down(event)
 
-    def _spawn_next_block(self) -> None:
+    def _next_block_state(self) -> None:
         """
-        Spawn next block and raster it
+        Start the next block state
         """
 
+        # self._canvas.clear_rows()
         self._active_block = self._get_random_block()
         self._active_block.raster()
 

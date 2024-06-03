@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from typing import Tuple, List
+from typing import Tuple, List, Dict, Set
 
 from gui.canvas import Canvas
 from element.point import Point
@@ -36,9 +36,11 @@ class Block(ABC):
         :return: bool flag indicating success
         """
 
+        # check that we can raster this block
+
         # iterate through the points to ensure you can raster it
         for point in self._points:
-            if not self._can_raster(point):
+            if not self._canvas.can_raster(point.x, point.y) or self._canvas.is_occupied(point.x, point.y):
                 return False
 
         # now raster it
@@ -55,16 +57,7 @@ class Block(ABC):
         :return: bool indicating translation success
         """
 
-        # check that all points can be translated
-        for point in self._points:
-            if not self._can_translate(point, dx, dy):
-                return False
-
-        # now translate all points
-        for point in self._points:
-            self._canvas.translate_point(point, dx, dy)
-
-        return True
+        return self._translate_points([(dx, dy)] * len(self._points))
 
     def rotate(self) -> bool:
         """
@@ -74,20 +67,7 @@ class Block(ABC):
 
         rotation_deltas = self.get_rotation_deltas()
 
-        # check that all points can be translated
-        for (point, deltas) in zip(self._points, rotation_deltas):
-            dx, dy = deltas
-            if not self._can_translate(point, dx, dy):
-                return False
-
-        # now translate all points
-        for (point, deltas) in zip(self._points, rotation_deltas):
-            dx, dy = deltas
-            self._canvas.translate_point(point, dx, dy)
-
-        self._rotation_state = (self._rotation_state + 1) % 4
-
-        return True
+        return self._translate_points(rotation_deltas)
 
     def remove(self) -> None:
         """
@@ -124,47 +104,104 @@ class Block(ABC):
 
         raise NotImplementedError()
 
-    def _can_raster(self, point: Point) -> bool:
+    def _translate_points(self, translation_deltas: List[Tuple[int, int]]) -> bool:
         """
-        Helper method to determine if we can raster a point
-        Checks,
-          1. Can the location be rastered?
-          2. Is the location not occupied? However, it can be occupied by other points belonging to the block
-        :param point: point to check
-        :return: bool indicating if we can place a point belonging to this block at this location
+        Translate points based on translation deltas
+        :param translation_deltas: list of equivalent length to self._points that correspond to the dx, dy to
+        translate each point
+        :return: True if can be successfully translated
         """
 
-        return self._canvas.can_raster(point.x, point.y) and self._is_loc_free(point.x, point.y)
+        assert len(self._points) == len(translation_deltas)
 
-    def _can_translate(self, point: Point, dx: int, dy: int) -> bool:
-        """
-        Helper method to determine if we can translate a point by some (dx, dy)
-        :param point: point to check
-        :param dx: delta in x dir
-        :param dy: delta in y dir
-        :return: bool indicating if we can translate a point belonging to this block at this location
-        """
+        # create a map from point to delta
+        delta_map: Dict[Point, Tuple[int, int]] = {
+            self._points[i]: translation_deltas[i] for i in range(len(self._points))
+        }
 
-        return self._canvas.can_translate(point, dx, dy) and self._is_loc_free(point.x + dx, point.y + dy)
+        # check that the block can be translated - we also store the blocks in topological order for the DAG where
+        # if point A runs into point B during the translate, we'll make sure to translate point B first
+        # edges holds the adjacency list of the DAG holding the translation dependencies
+        edges: Dict[Point, List[Point]] = {
+            point: [] for point in self._points
+        }
 
-    def _is_loc_free(self, x: int, y: int) -> bool:
-        """
-        Helper method to determine if the (x, y) loc is free for this block.
-        It checks if the canvas has marked this location as occupied but also that this location isn't already part
-        of this block's points
-        :param x: x coord
-        :param y: y coord
-        :return: bool indicating if (x, y) loc is free for this block
-        """
-
-        if not self._canvas.is_occupied(x, y):
-            return True
-
-        # otherwise, iterate through the points to see if x, y matches any of the locations
-        # we could have used a set to store locations, but that adds unnecessary overhead when len(points) == 4
-        loc = (x, y)
         for point in self._points:
-            if loc == (point.x, point.y):
+            dx, dy = delta_map[point]
+            if not self._canvas.can_translate(point, dx, dy):
+                # we could not translate
+                return False
+
+            next_x, next_y = point.x + dx, point.y + dy
+            if not self._canvas.is_occupied(next_x, next_y):
+                # not occupied, so continue
+                continue
+
+            # get the point in the dx and dy location
+            slotted_point = self._canvas.get_point(next_x, next_y)
+
+            if slotted_point not in self._points:
+                # occupied by a point not in this block, exit
+                return False
+            elif slotted_point == point:
+                # looks like no delta, so continue
+                continue
+            else:
+                # dependency on another block point - add edge
+                edges[point].append(slotted_point)
+
+        # get translation order for the points
+        translation_order = self._get_translation_order(edges)
+
+        # now translate all points
+        for point in translation_order:
+            dx, dy = delta_map[point]
+            self._canvas.translate_point(point, dx, dy)
+
+        return True
+
+    @staticmethod
+    def _get_translation_order(edges: Dict[Point, List[Point]]) -> List[Point]:
+        """
+        Get translation order for points given the adjacency list of the DAG containing translation dependencies.
+        A translation dependency directed edge A->B occurs when point A's translation needs to come 'after' point
+        B's to avoid overwrites. Therefore, we will topologically sort edges and return the reverse order
+        :param edges: adjacency list
+        :return: List of points of the necessary translation order to avoid conflicts. Raises an exception if
+        we detect a cycle in the edges (this should never happen in tetris)
+        """
+
+        # container of visited points
+        visited: Set[Point] = set()
+        order: List[Point] = []
+
+        tmp_visited: Set[Point] = set()
+
+        # helper method to carry out a DFS and populate the topological order
+        # return False if we detect a cycle
+        def _dfs(vertex: Point) -> bool:
+            if vertex in tmp_visited:
+                # cycle!!!
+                return False
+
+            if vertex in visited:
+                # we can terminate
                 return True
 
-        return False
+            order.append(vertex)
+            visited.add(vertex)
+            tmp_visited.add(vertex)
+
+            for next_point in edges[vertex]:
+                if not _dfs(next_point):
+                    return False
+
+            tmp_visited.remove(vertex)
+
+            return True
+
+        for point in edges:
+            if not _dfs(point):
+                raise Exception("CYCLE DETECTED - incorrect translation set")
+
+        return order
