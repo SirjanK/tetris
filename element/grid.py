@@ -61,10 +61,14 @@ class Grid:
         :return: Point if it exists at x, y, otherwise None
         """
 
-        if not self._canvas.is_inbounds(x, y):
-            return None
-        
         pass
+
+    def remove(self, point: Point) -> None:
+        """
+        Remove the point from the grid
+        """
+
+        self._canvas.remove_point(point)
 
     def clear_rows(self) -> None:
         """
@@ -81,3 +85,14 @@ class Grid:
         """
 
         pass
+
+    def can_add(self, x: int, y: int) -> bool:
+        """
+        Determine if we can add a point at (x, y), i.e. is (x, y) in bounds
+
+        :param x: x coord
+        :param y: y coord
+        :return: can add flag
+        """
+
+        return self._canvas.is_inbounds(x, y)
