@@ -1,4 +1,5 @@
 from gui.canvas import Canvas
+from element.grid import Grid
 from element.block import Block
 from element.tetris_blocks import (
     SquareBlock,
@@ -9,6 +10,8 @@ from element.tetris_blocks import (
     TBlock,
     TwoBlock,
 )
+from configs import config
+
 import tkinter as tk
 import random
 
@@ -20,13 +23,13 @@ class Game:
 
     # instantiation functions for blocks
     BLOCK_BUILDERS = [
-        lambda canvas: SquareBlock(canvas),
-        lambda canvas: LBlock(canvas),
-        lambda canvas: LineBlock(canvas),
-        lambda canvas: RBlock(canvas),
-        lambda canvas: SBlock(canvas),
-        lambda canvas: TBlock(canvas),
-        lambda canvas: TwoBlock(canvas),
+        lambda grid: SquareBlock(grid),
+        lambda grid: LBlock(grid),
+        lambda grid: LineBlock(grid),
+        lambda grid: RBlock(grid),
+        lambda grid: SBlock(grid),
+        lambda grid: TBlock(grid),
+        lambda grid: TwoBlock(grid),
     ]
 
     def __init__(self):
@@ -35,7 +38,14 @@ class Game:
         self._root = tk.Tk()
         self._root.title("Tetris")
 
-        self._canvas = Canvas(self._root)
+        canvas = Canvas(
+            root=self._root,
+            height=config.HEIGHT,
+            width=config.WIDTH,
+            cell_size=config.CELL_SIZE,
+            padding=config.PADDING,
+        )
+        self._grid = Grid(canvas)
 
         # initial block
         self._active_block = self._get_random_block()
@@ -57,11 +67,11 @@ class Game:
         Helper method to bind keys
         """
 
-        self._canvas.bind_key_listener("<Up>", self._rotate)
-        self._canvas.bind_key_listener("<Down>", self._move_down)
-        self._canvas.bind_key_listener("<Left>", self._move_left)
-        self._canvas.bind_key_listener("<Right>", self._move_right)
-        self._canvas.bind_key_listener("<space>", self._move_to_bottom)
+        self._grid.bind_key_listener("<Up>", self._rotate)
+        self._grid.bind_key_listener("<Down>", self._move_down)
+        self._grid.bind_key_listener("<Left>", self._move_left)
+        self._grid.bind_key_listener("<Right>", self._move_right)
+        self._grid.bind_key_listener("<space>", self._move_to_bottom)
 
     def _rotate(self, event: tk.Event) -> None:
         """
@@ -115,7 +125,7 @@ class Game:
         Start the next block state
         """
 
-        # self._canvas.clear_rows()
+        # self._grid.clear_rows()
         self._active_block = self._get_random_block()
         self._active_block.raster()
 
@@ -124,7 +134,7 @@ class Game:
         Get a random block instance
         """
 
-        return random.choice(self.BLOCK_BUILDERS)(self._canvas)
+        return random.choice(self.BLOCK_BUILDERS)(self._grid)
 
 
 def launch_game():
