@@ -58,7 +58,7 @@ class Game:
         Start the game
         """
 
-        self._active_block.raster()
+        self._active_block.activate()
 
         self._root.mainloop()
 

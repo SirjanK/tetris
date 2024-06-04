@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 class LBlock(Block):
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
-        half_width = self._canvas.W // 2
+        half_width = self._grid.width // 2
 
         return [
             (half_width - 2, 0),
@@ -49,7 +49,7 @@ class LBlock(Block):
 
 class LineBlock(Block):
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
-        half_width = self._canvas.W // 2
+        half_width = self._grid.width // 2
 
         return [
             (half_width - 2, 1),
@@ -80,7 +80,7 @@ class LineBlock(Block):
 
 class RBlock(Block):
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
-        half_width = self._canvas.W // 2
+        half_width = self._grid.width // 2
 
         return [
             (half_width - 2, 1),
@@ -125,7 +125,7 @@ class RBlock(Block):
 
 class SBlock(Block):
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
-        half_width = self._canvas.W // 2
+        half_width = self._grid.width // 2
 
         return [
             (half_width - 2, 1),
@@ -156,7 +156,7 @@ class SBlock(Block):
 
 class SquareBlock(Block):
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
-        half_width = self._canvas.W // 2
+        half_width = self._grid.width // 2
 
         return [
             (half_width - 1, 0),
@@ -174,7 +174,7 @@ class SquareBlock(Block):
 
 class TBlock(Block):
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
-        half_width = self._canvas.W // 2
+        half_width = self._grid.width // 2
 
         return [
             (half_width - 2, 1),
@@ -219,7 +219,7 @@ class TBlock(Block):
 
 class TwoBlock(Block):
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
-        half_width = self._canvas.W // 2
+        half_width = self._grid.width // 2
 
         return [
             (half_width - 2, 0),
