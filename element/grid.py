@@ -111,7 +111,7 @@ class Grid:
         
         return True
 
-    def clear_rows(self) -> None:
+    def clear_full_rows(self) -> None:
         """
         Clear any full rows on the board
         """

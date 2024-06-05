@@ -149,9 +149,7 @@ def test_batch_move():
     # Test gets
     def _check_get(expected_point: Point, x: int, y: int):
         maybe_point = grid.get_point(x, y)
-
         assert maybe_point is not None
-
         assert maybe_point == expected_point
         assert maybe_point.x == x
         assert maybe_point.y == y
@@ -248,9 +246,7 @@ def test_batch_translate():
     # Test gets
     def _check_get(expected_point: Point, x: int, y: int):
         maybe_point = grid.get_point(x, y)
-
         assert maybe_point is not None
-
         assert maybe_point == expected_point
         assert maybe_point.x == x
         assert maybe_point.y == y
@@ -287,16 +283,133 @@ def test_batch_translate():
 
 def test_clear_rows_single():
     grid = create_grid()
+
+    # populate a full row at row_idx=17
+    for x in range(grid.width):
+        grid.add_point(Point(x=x, y=17, color='black'))
+    
+    # populate two points below
+    grid.add_point(Point(x=4, y=18, color='black'))
+    grid.add_point(Point(x=1, y=20, color='black'))
+
+    # populate three points above
+    grid.add_point(Point(x=7, y=16, color='black'))
+    grid.add_point(Point(x=9, y=12, color='black'))
+    grid.add_point(Point(x=1, y=5, color='black'))
+
+    # clear the row
+    grid.clear_full_rows()
+
+    # test correctness
+    def _check_get(x: int, y: int):
+        maybe_point = grid.get_point(x, y)
+        assert maybe_point is not None
+        assert maybe_point.x == x
+        assert maybe_point.y == y
+    
+    _check_get(4, 18)
+    _check_get(1, 20)
+    _check_get(7, 17)
+    _check_get(9, 13)
+    _check_get(1, 6)
+
+    assert grid.get_point(7, 16) is None
+    assert grid.get_point(9, 12) is None
+    assert grid.get_point(1, 5) is None
+
+    for x in range(grid.width):
+        if x != 7:
+            assert grid.get_point(x=x, y=17) is None
+
     print("test_clear_rows_single success!")
 
 
 def test_clear_rows_top():
     grid = create_grid()
+
+    # populate a full row at row_idx=0
+    for x in range(grid.width):
+        grid.add_point(Point(x=x, y=0, color='black'))
+    
+    # populate two points below
+    grid.add_point(Point(x=8, y=2, color='black'))
+    grid.add_point(Point(x=4, y=18, color='black'))
+
+    # clear the row
+    grid.clear_full_rows()
+
+    # test correctness
+    def _check_get(x: int, y: int):
+        maybe_point = grid.get_point(x, y)
+        assert maybe_point is not None
+        assert maybe_point.x == x
+        assert maybe_point.y == y
+    
+    _check_get(8, 2)
+    _check_get(4, 18)
+
+    for x in range(grid.width):
+        assert grid.get_point(x=x, y=0) is None
+
     print("test_clear_rows_top success!")
 
 
 def test_clear_rows_multiple():
     grid = create_grid()
+
+    # populate full rows at row_idx=20, 17, and 4
+    full_rows = [20, 17, 4]
+    for row in full_rows:
+        for x in range(grid.width):
+            grid.add_point(Point(x=x, y=row, color='black'))
+    
+    # populate two points btwn 20 and 17
+    grid.add_point(Point(x=4, y=18, color='black'))
+    grid.add_point(Point(x=1, y=19, color='black'))
+
+    # populate two points between 17 and 4
+    grid.add_point(Point(x=8, y=5, color='black'))
+    grid.add_point(Point(x=9, y=12, color='black'))
+
+    # populate two points above 4
+    grid.add_point(Point(x=3, y=3, color='black'))
+    grid.add_point(Point(x=7, y=1, color='black'))
+
+    # clear the rows
+    grid.clear_full_rows()
+
+    # test correctness
+    def _check_get(x: int, y: int):
+        maybe_point = grid.get_point(x, y)
+        assert maybe_point is not None
+        assert maybe_point.x == x
+        assert maybe_point.y == y
+    
+    _check_get(4, 19)
+    _check_get(1, 20)
+    _check_get(8, 7)
+    _check_get(9, 14)
+    _check_get(3, 6)
+    _check_get(7, 4)
+
+    assert grid.get_point(4, 18) is None
+    assert grid.get_point(1, 19) is None
+    assert grid.get_point(8, 5) is None
+    assert grid.get_point(9, 12) is None
+    assert grid.get_point(3, 3) is None
+    assert grid.get_point(7, 1) is None
+
+    for x in range(grid.width):
+        if x != 1:
+            assert grid.get_point(x=x, y=20) is None
+    
+    for x in range(grid.width):
+        assert grid.get_point(x=x, y=17) is None
+
+    for x in range(grid.width):
+        if x != 7:
+            assert grid.get_point(x=x, y=4) is None
+
     print("test_clear_rows_multiple success!")
 
 
@@ -314,3 +427,6 @@ if __name__ == '__main__':
     test_add_get_remove()
     test_batch_move()
     test_batch_translate()
+    test_clear_rows_single()
+    test_clear_rows_top()
+    test_clear_rows_multiple()
