@@ -38,7 +38,7 @@ class Block(ABC):
 
         # iterate through the points and exit if we cannot place any of the points
         for point in self._points:
-            if not self._can_place(point.x, point.y):
+            if not self._grid.can_place(point.x, point.y):
                 return False
         
         # now add all the points
@@ -53,7 +53,11 @@ class Block(ABC):
         :return: bool indicating translation success
         """
 
-        return self._translate_with_deltas(deltas=[(dx, dy)] * len(self._points))
+        point_deltas = {
+            point: (dx, dy) for point in self._points
+        }
+
+        return self._grid.batch_translate(point_deltas)
 
     def rotate(self) -> bool:
         """
@@ -62,8 +66,12 @@ class Block(ABC):
         """
 
         deltas = self.get_rotation_deltas()
+        assert len(deltas) == len(self._points)
+        point_deltas = {
+            point: delta for point, delta in zip(self._points, deltas)
+        }
 
-        return self._translate_with_deltas(deltas)
+        return self._translate_with_deltas(point_deltas)
 
     def remove(self) -> None:
         """
@@ -99,52 +107,3 @@ class Block(ABC):
         """
 
         raise NotImplementedError()
-
-    def _can_place(self, x: int, y: int) -> bool:
-        """
-        Determine if we can place a point in this block to location (x, y).
-
-        This returns True if 
-        (x, y) is a valid location AND (
-            (x, y) is not occupied OR
-            (x, y) is occupied by a point in this block
-        )
-
-        :return: can place bool
-        """
-
-        if not self._grid.can_add(x, y):
-            return False
-        
-        # get the point
-        maybe_point = self._grid.get_point(x, y)
-
-        if maybe_point is None:
-            # not occupied
-            return True
-        
-        # otherwise, check if point belongs to this block, if it is we can place
-        return maybe_point in self._points
-    
-    def _translate_with_deltas(self, deltas: List[Tuple[int, int]]) -> bool:
-        """
-        Translate points according to a passed in deltas list
-
-        :param deltas: list of (dx, dy) of equivalent length to points
-        :return: success flag
-        """
-
-        assert len(deltas) == len(self._points)
-
-        # check that we can translate all these points
-        for point, direction_vector in zip(self._points, deltas):
-            dx, dy = direction_vector
-
-            if not self._can_place(point.x + dx, point.y + dy):
-                return False
-        
-        # now, translate
-        for point, direction_vector in zip(self._points, deltas):
-            dx, dy = direction_vector
-
-            self._grid.translate_point(point, dx, dy)
