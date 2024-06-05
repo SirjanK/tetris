@@ -1,7 +1,7 @@
 from gui.canvas import Canvas
 from element.point import Point
 
-from typing import Optional, Callable, Set, List
+from typing import Optional, Callable, List
 
 
 class Grid:
@@ -18,21 +18,15 @@ class Grid:
         self.width = canvas.width
         self._canvas = canvas
 
-        # occupancies matrix (list of H x W containing num points occupying the loc)
-        self._occupancies: List[List[int]] = []
-        # container for points at a location - contains the active point (H x W matrix)
+        # container for points at a location (H x W matrix)
         self._points: List[List[Optional[Point]]] = []
-        # row counts (sum along the first dim of occupancies)
+        # row counts
         self._row_counts: List[int] = []
 
         for _ in range(self.height):
             self._row_counts.append(0)
-            self._occupancies.append([0] * self.width)
             self._points.append([None] * self.width)
 
-        # set containing full row indices
-        self._full_rows: Set[int] = set() 
-    
     def add_point(self, point: Point) -> bool:
         """
         Adds a point to the grid
@@ -41,7 +35,7 @@ class Grid:
         :return: success flag
         """
 
-        if not self.can_add(point.x, point.y):
+        if not self.can_place(point.x, point.y):
             return False
         
         # otherwise, add
@@ -61,16 +55,15 @@ class Grid:
         :return: success flag
         """
 
-        if not self.can_add(x, y):
+        if not self.can_place(x, y):
             return False
 
         # clear out current loc
         self._remove_occupancy(point)
-
         # update next loc
         point.x, point.y = x, y
-
         self._add_occupancy(point)
+
         return self._canvas.move_point(point, x, y)
 
     def translate_point(self, point: Point, dx: int, dy: int) -> bool:
@@ -80,20 +73,20 @@ class Grid:
         :param point: point to translate
         :param dx: delta in x dir
         :param dy: delta in y dir
+        :return: success flag
         """
 
         next_x, next_y = point.x + dx, point.y + dy
 
-        if not self.can_add(next_x, next_y):
+        if not self.can_place(next_x, next_y):
             return False
         
         # clear out current loc
         self._remove_occupancy(point)
-
         # update next loc
         point.x, point.y = next_x, next_y
-
         self._add_occupancy(point)
+
         return self._canvas.translate_point(point, dx, dy)
 
     def get_point(self, x: int, y: int) -> Optional[Point]:
@@ -105,12 +98,18 @@ class Grid:
         :return: Point if it exists at x, y, otherwise None
         """
 
+        if not self._canvas.is_inbounds(x, y):
+            raise Exception(f"Point coordinates {x, y} is not in bounds")
+
         return self._points[y][x]
 
     def remove(self, point: Point) -> None:
         """
         Remove the point from the grid
         """
+
+        if self.get_point(point.x, point.y) != point:
+            raise Exception("Point does not exist")
 
         self._remove_occupancy(point)
         self._canvas.remove_point(point)
@@ -120,24 +119,7 @@ class Grid:
         Clear any full rows on the board
         """
 
-        # sort the row indices from bottom to top (reverse order)
-        full_rows = sorted(self._full_rows, lambda key: -key)
-
-        # iterate through the indices one by one and clear the row
-        for full_row_idx in full_rows:
-            for point in self._points[full_row_idx]:
-                self.remove(point)
-        
-        # iterate through intermediate rows between the indices
-        # and move down all points by an increasing shift amount
-        for idx in range(len(full_rows)):
-            full_row_idx = full_rows[idx]
-            next_full_row_idx = full_rows[idx + 1] if idx < len(full_rows) - 1 else -1
-
-            for row_idx in range(next_full_row_idx + 1, full_row_idx):
-                # shift down
-                for point in self._points[row_idx]:
-                    self.translate_point(point, dx=0, dy=idx + 1)
+        pass
 
     def bind_key_listener(self, key: str, fn: Callable) -> None:
         """
@@ -148,16 +130,17 @@ class Grid:
 
         self._canvas.bind_key_listener(key, fn)
 
-    def can_add(self, x: int, y: int) -> bool:
+    def can_place(self, x: int, y: int) -> bool:
         """
-        Determine if we can add a point at (x, y), i.e. is (x, y) in bounds
+        Determine if we can place a point at (x, y), i.e. is (x, y) in bounds and
+        not occupied
 
         :param x: x coord
         :param y: y coord
-        :return: can add flag
+        :return: can place flag
         """
 
-        return self._canvas.is_inbounds(x, y)
+        return self._canvas.is_inbounds(x, y) and self.get_point(x, y) is None
     
     def _add_occupancy(self, point: Point) -> None:
         """
@@ -166,27 +149,15 @@ class Grid:
         :param point: point to add
         """
 
-        prev_unoccupied = self._occupancies[point.y][point.x] > 0
         self._points[point.y][point.x] = point
+        self._row_counts[point.y] += 1
 
-        if not prev_unoccupied:
-            self._occupancies[point.y][point.x] += 1
-            self._row_counts[point.y] += 1
-
-            if self._row_counts[point.y] >= self.width:
-                self._full_rows.add(point.y)
-    
     def _remove_occupancy(self, point: Point) -> None:
         """
-        Remove point from occupancy data structures
+        Remove point from occupancy data structures.
 
         :param point: point to remove
         """
 
-        self._occupancies[point.y][point.x] -= 1
-        if self._occupancies[point.y][point.x] == 0:
-            self._row_counts[point.y] -= 1
-            if self._row_counts[point.y] == self.width - 1:
-                self._full_rows.remove(point.y)
-            
-            self._points[point.y][point.x] = None
+        self._points[point.y][point.x] = None
+        self._row_counts[point.y] -= 1
