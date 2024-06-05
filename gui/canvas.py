@@ -1,7 +1,7 @@
 import tkinter as tk
 from element.point import Point
 
-from typing import Tuple, Callable, List, Optional
+from typing import Tuple, Callable
 
 
 class Canvas:
