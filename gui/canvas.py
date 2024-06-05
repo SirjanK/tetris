@@ -30,52 +30,33 @@ class Canvas:
 
         self._canvas = self._init_canvas()
 
-    def raster_point(self, point: Point) -> bool:
+    def raster_point(self, point: Point) -> None:
         """
         Raster a new point on the canvas if point is in bounds (returns False otherwise)
 
         :param point: point to raster
-        :return: bool indicating raster success
         """
-
-        if not self.is_inbounds(point.x, point.y):
-            return False
 
         self._create_rectangle(point)
 
-        return True
-
-    def move_point(self, point: Point, x: int, y: int) -> bool:
+    def move_point(self, point: Point, x: int, y: int) -> None:
         """
         Move a point already on the canvas
         :param point: point to move
         :param x: x coordinate to move the point
         :param y: y coordinate to move the point
-
-        No-op if we cannot move
-
-        :return: true if success, false otherwise
         """
 
-        if not self.is_inbounds(x, y) or point.rectangle is None:
-            return False
-
-        # otherwise, execute the move
         x1, y1, x2, y2 = self._get_rectangle_coordinates(x, y)
         self._canvas.coords(point.rectangle, x1, y1, x2, y2)
 
-    def translate_point(self, point: Point, dx: int, dy: int) -> bool:
+    def translate_point(self, point: Point, dx: int, dy: int) -> None:
         """
         Try to translate a point in the direction dx, dy. No-op if we cannot translate
         :param point: point to translate
         :param dx: delta to move in the x dir
         :param dy: delta to move in the y dir
-
-        :return: true if we can translate, false ow
         """
-
-        if not self.is_inbounds(point.x + dx, point.y + dy):
-            return
 
         self._canvas.move(
             point.rectangle,

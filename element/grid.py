@@ -79,35 +79,12 @@ class Grid:
         :return: success flag
         """
 
-        # validate uniqueness of point locations
-        assert len(set(point_locations.items())) == len(point_locations), \
-            f"Passed in point locations contains duplicates: {point_locations.items()}"
-        
-        # otherwise, we can move!
-        # first, remove from old locations
-        for point in point_locations:
-            self._remove_occupancy(point)
-        
-        # next, verify we can place all the points
-        invalid = False
-        for loc in point_locations.values():
-            x, y = loc
-            if not self.can_place(x, y):
-                invalid = True
-                break
-        
-        if invalid:
-            # add back all the points
-            for point in point_locations:
-                self._add_occupancy(point)
-
+        if not self._batch_move_update(point_locations):
             return False
-        
-        # now, add to the new locations and execute the move
+
         for point, loc in point_locations.items():
-            point.x, point.y = loc
-            self._add_occupancy(point)
-            self._canvas.move_point(point, point.x, point.y)
+            x, y = loc
+            self._canvas.move_point(point, x, y)
         
         return True
 
@@ -121,7 +98,18 @@ class Grid:
         :return: success flag
         """
 
-        pass
+        point_locations = {
+            point: (point.x + deltas[0], point.y + deltas[1]) for point, deltas in point_deltas.items()
+        }
+
+        if not self._batch_move_update(point_locations):
+            return False
+
+        for point, deltas in point_deltas.items():
+            dx, dy = deltas
+            self._canvas.translate_point(point, dx, dy)
+        
+        return True
 
     def clear_rows(self) -> None:
         """
@@ -170,3 +158,44 @@ class Grid:
 
         self._points[point.y][point.x] = None
         self._row_counts[point.y] -= 1
+    
+    def _batch_move_update(self, point_locations: Dict[Point, Tuple[int, int]]) -> bool:
+        """
+        Updates the internal state for a batch move of points to new locations
+
+        Raises an exception if any point locations are the same
+
+        :param point_locations: map from point to new location
+        :return: success flag
+        """
+
+        # validate uniqueness of point locations
+        assert len(set(point_locations.items())) == len(point_locations), \
+            f"Passed in point locations contains duplicates: {point_locations.items()}"
+        
+        # otherwise, we can move!
+        # first, remove from old locations
+        for point in point_locations:
+            self._remove_occupancy(point)
+        
+        # next, verify we can place all the points
+        invalid = False
+        for loc in point_locations.values():
+            x, y = loc
+            if not self.can_place(x, y):
+                invalid = True
+                break
+        
+        if invalid:
+            # add back all the points
+            for point in point_locations:
+                self._add_occupancy(point)
+
+            return False
+        
+        # now, add to the new locations and execute the move
+        for point, loc in point_locations.items():
+            point.x, point.y = loc
+            self._add_occupancy(point)
+        
+        return True

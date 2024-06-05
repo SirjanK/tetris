@@ -15,20 +15,20 @@ class MockCanvas(Canvas):
     """
 
     @override
-    def raster_point(self, point: Point) -> bool:
-        return True
+    def raster_point(self, point: Point) -> None:
+        pass
     
     @override
-    def move_point(self, point: Point, x: int, y: int) -> bool:
-        return True
+    def move_point(self, point: Point, x: int, y: int) -> None:
+        pass
     
     @override
-    def translate_point(self, point: Point, dx: int, dy: int) -> bool:
-        return True
+    def translate_point(self, point: Point, dx: int, dy: int) -> None:
+        pass
 
     @override
     def remove_point(self, point: Point) -> None:
-        return True
+        pass
     
 
 def create_grid() -> Grid:
@@ -222,6 +222,66 @@ def test_batch_move():
 
 def test_batch_translate():
     grid = create_grid()
+
+    # Test successful case first
+    # Add 6 points grouped as (4, 2)
+    points = [
+        Point(x=4, y=5, color='red'),
+        Point(x=4, y=6, color='orange'),
+        Point(x=5, y=5, color='yellow'),
+        Point(x=5, y=6, color='green'),
+        Point(x=6, y=17, color='blue'),
+        Point(x=6, y=18, color='indigo'),
+    ]
+
+    for point in points:
+        grid.add_point(point)
+
+    # Batch translate the group of 4
+    assert grid.batch_translate({
+        points[0]: (0, 1),
+        points[1]: (0, 1),
+        points[2]: (1, 2),
+        points[3]: (2, 2),
+    })
+
+    # Test gets
+    def _check_get(expected_point: Point, x: int, y: int):
+        maybe_point = grid.get_point(x, y)
+
+        assert maybe_point is not None
+
+        assert maybe_point == expected_point
+        assert maybe_point.x == x
+        assert maybe_point.y == y
+
+    _check_get(points[0], 4, 6)
+    _check_get(points[1], 4, 7)
+    _check_get(points[2], 6, 7)
+    _check_get(points[3], 7, 8)
+    _check_get(points[4], 6, 17)
+    _check_get(points[5], 6, 18)
+
+    assert grid.get_point(4, 5) is None
+    assert grid.get_point(5, 5) is None
+    assert grid.get_point(5, 6) is None
+
+    # Make sure translating to duplicate locations raises an error
+    _is_error_caught(lambda: grid.batch_translate({
+        points[0]: (1, 2),
+        points[1]: (1, 1),
+        points[2]: (0, 0),
+    }))
+
+    # Assert that translate out of bounds does not work
+    assert not grid.batch_translate({points[4]: (2, 4)})
+
+    # Assert that translate to an already occupied location does not work
+    assert not grid.batch_translate({
+        points[4]: (0, 0),
+        points[5]: (1, -10),
+    })
+
     print("test_batch_translate success!")
 
 
@@ -253,3 +313,4 @@ if __name__ == '__main__':
     test_can_place()
     test_add_get_remove()
     test_batch_move()
+    test_batch_translate()
