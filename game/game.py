@@ -38,27 +38,28 @@ class Game:
         self._root = tk.Tk()
         self._root.title("Tetris")
 
-        canvas = Canvas(
+        self._canvas = Canvas(
             root=self._root,
             height=config.HEIGHT,
             width=config.WIDTH,
             cell_size=config.CELL_SIZE,
             padding=config.PADDING,
         )
-        self._grid = Grid(canvas)
+
+        # self._grid = Grid(canvas)
 
         # initial block
-        self._active_block = self._get_random_block()
+        # self._active_block = self._get_random_block()
 
         # key bindings
-        self._bind_keys()
+        # self._bind_keys()
 
     def start(self) -> None:
         """
         Start the game
         """
 
-        self._active_block.activate()
+        # self._active_block.activate()
 
         self._root.mainloop()
 
