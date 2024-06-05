@@ -71,7 +71,7 @@ class Grid:
         point.x, point.y = x, y
 
         self._add_occupancy(point)
-        self._canvas.move_point(point, x, y)
+        return self._canvas.move_point(point, x, y)
 
     def translate_point(self, point: Point, dx: int, dy: int) -> bool:
         """
@@ -94,7 +94,7 @@ class Grid:
         point.x, point.y = next_x, next_y
 
         self._add_occupancy(point)
-        self._canvas.translate_point(point, dx, dy)
+        return self._canvas.translate_point(point, dx, dy)
 
     def get_point(self, x: int, y: int) -> Optional[Point]:
         """
@@ -120,7 +120,24 @@ class Grid:
         Clear any full rows on the board
         """
 
-        pass
+        # sort the row indices from bottom to top (reverse order)
+        full_rows = sorted(self._full_rows, lambda key: -key)
+
+        # iterate through the indices one by one and clear the row
+        for full_row_idx in full_rows:
+            for point in self._points[full_row_idx]:
+                self.remove(point)
+        
+        # iterate through intermediate rows between the indices
+        # and move down all points by an increasing shift amount
+        for idx in range(len(full_rows)):
+            full_row_idx = full_rows[idx]
+            next_full_row_idx = full_rows[idx + 1] if idx < len(full_rows) - 1 else -1
+
+            for row_idx in range(next_full_row_idx + 1, full_row_idx):
+                # shift down
+                for point in self._points[row_idx]:
+                    self.translate_point(point, dx=0, dy=idx + 1)
 
     def bind_key_listener(self, key: str, fn: Callable) -> None:
         """
