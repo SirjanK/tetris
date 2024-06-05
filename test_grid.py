@@ -121,14 +121,108 @@ def test_add_get_remove():
     print("test_add_get_remove success!")
 
 
-def test_move():
+def test_batch_move():
     grid = create_grid()
-    print("test_move success!")
+
+    # Test successful case first
+    # Add 6 points grouped as (4, 2)
+    points = [
+        Point(x=4, y=5, color='red'),
+        Point(x=4, y=6, color='orange'),
+        Point(x=5, y=5, color='yellow'),
+        Point(x=5, y=6, color='green'),
+        Point(x=6, y=17, color='blue'),
+        Point(x=6, y=18, color='indigo'),
+    ]
+
+    for point in points:
+        grid.add_point(point)
+
+    # Batch move the group of 4
+    assert grid.batch_move({
+        points[0]: (8, 8),
+        points[1]: (8, 9),
+        points[2]: (9, 8),
+        points[3]: (9, 9),
+    })
+
+    # Test gets
+    def _check_get(expected_point: Point, x: int, y: int):
+        maybe_point = grid.get_point(x, y)
+
+        assert maybe_point is not None
+
+        assert maybe_point == expected_point
+        assert maybe_point.x == x
+        assert maybe_point.y == y
+
+    _check_get(points[0], 8, 8)
+    _check_get(points[1], 8, 9)
+    _check_get(points[2], 9, 8)
+    _check_get(points[3], 9, 9)
+    _check_get(points[4], 6, 17)
+    _check_get(points[5], 6, 18)
+
+    assert grid.get_point(4, 5) is None
+    assert grid.get_point(4, 6) is None
+    assert grid.get_point(5, 5) is None
+    assert grid.get_point(5, 6) is None
+
+    # Batch move the group of 2
+    assert grid.batch_move({
+        points[4]: (4, 5),
+        points[5]: (4, 6),
+    })
+
+    # Test gets
+    _check_get(points[0], 8, 8)
+    _check_get(points[1], 8, 9)
+    _check_get(points[2], 9, 8)
+    _check_get(points[3], 9, 9)
+    _check_get(points[4], 4, 5)
+    _check_get(points[5], 4, 6)
+
+    assert grid.get_point(6, 17) is None
+    assert grid.get_point(6, 18) is None
+
+    # Batch move the four with intersecting regions
+    assert grid.batch_move({
+        points[0]: (7, 8),
+        points[1]: (7, 9),
+        points[2]: (8, 8),
+        points[3]: (8, 9),
+    })
+
+    _check_get(points[0], 7, 8)
+    _check_get(points[1], 7, 9)
+    _check_get(points[2], 8, 8)
+    _check_get(points[3], 8, 9)
+
+    assert grid.get_point(9, 8) is None
+    assert grid.get_point(9, 9) is None
+
+    # Make sure moving to duplicate locations raises an error
+    _is_error_caught(lambda: grid.batch_move({
+        points[0]: (3, 12),
+        points[1]: (3, 13),
+        points[2]: (3, 12),
+    }))
+
+    # Assert that move out of bounds does not work
+    assert not grid.batch_move({points[3]: (10, 20)})
+
+    # Assert that move to an already occupied location does not work
+    assert not grid.batch_move({
+        points[4]: (10, 9),
+        points[5]: (10, 10),
+    })
+
+    print("test_batch_move success!")
 
 
-def test_translate():
+def test_batch_translate():
     grid = create_grid()
-    print("test_translate success!")
+    print("test_batch_translate success!")
 
 
 def test_clear_rows_single():
@@ -158,3 +252,4 @@ def _is_error_caught(fn: Callable):
 if __name__ == '__main__':
     test_can_place()
     test_add_get_remove()
+    test_batch_move()

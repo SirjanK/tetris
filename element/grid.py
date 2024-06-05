@@ -1,7 +1,7 @@
 from gui.canvas import Canvas
 from element.point import Point
 
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Dict, Tuple
 
 
 class Grid:
@@ -43,52 +43,7 @@ class Grid:
         self._canvas.raster_point(point)
         
         return True
-
-    def move_point(self, point: Point, x: int, y: int) -> bool:
-        """
-        Moves a point to a location x, y. This will only succeed if
-        x, y is a valid location
-
-        :param point: point to move
-        :param x: x coord
-        :param y: y coord
-        :return: success flag
-        """
-
-        if not self.can_place(x, y):
-            return False
-
-        # clear out current loc
-        self._remove_occupancy(point)
-        # update next loc
-        point.x, point.y = x, y
-        self._add_occupancy(point)
-
-        return self._canvas.move_point(point, x, y)
-
-    def translate_point(self, point: Point, dx: int, dy: int) -> bool:
-        """
-        Translates a point by dx, dy deltas.
-
-        :param point: point to translate
-        :param dx: delta in x dir
-        :param dy: delta in y dir
-        :return: success flag
-        """
-
-        next_x, next_y = point.x + dx, point.y + dy
-
-        if not self.can_place(next_x, next_y):
-            return False
-        
-        # clear out current loc
-        self._remove_occupancy(point)
-        # update next loc
-        point.x, point.y = next_x, next_y
-        self._add_occupancy(point)
-
-        return self._canvas.translate_point(point, dx, dy)
-
+ 
     def get_point(self, x: int, y: int) -> Optional[Point]:
         """
         Get the point if it exists at location x, y
@@ -113,6 +68,60 @@ class Grid:
 
         self._remove_occupancy(point)
         self._canvas.remove_point(point)
+    
+    def batch_move(self, point_locations: Dict[Point, Tuple[int, int]]) -> bool:
+        """
+        Batch move points to new locations
+
+        Raises an exception if any point locations are the same
+
+        :param point_locations: map from point to new location
+        :return: success flag
+        """
+
+        # validate uniqueness of point locations
+        assert len(set(point_locations.items())) == len(point_locations), \
+            f"Passed in point locations contains duplicates: {point_locations.items()}"
+        
+        # otherwise, we can move!
+        # first, remove from old locations
+        for point in point_locations:
+            self._remove_occupancy(point)
+        
+        # next, verify we can place all the points
+        invalid = False
+        for loc in point_locations.values():
+            x, y = loc
+            if not self.can_place(x, y):
+                invalid = True
+                break
+        
+        if invalid:
+            # add back all the points
+            for point in point_locations:
+                self._add_occupancy(point)
+
+            return False
+        
+        # now, add to the new locations and execute the move
+        for point, loc in point_locations.items():
+            point.x, point.y = loc
+            self._add_occupancy(point)
+            self._canvas.move_point(point, point.x, point.y)
+        
+        return True
+
+    def batch_translate(self, point_deltas: Dict[Point, Tuple[int, int]]) -> bool:
+        """
+        Batch translates points to new locations
+
+        Raises an exception if any point locations are the same
+
+        :param point_deltas: map from point to deltas (dx, dy) to translate by
+        :return: success flag
+        """
+
+        pass
 
     def clear_rows(self) -> None:
         """
