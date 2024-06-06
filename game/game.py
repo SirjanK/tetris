@@ -38,7 +38,7 @@ class Game:
         self._root = tk.Tk()
         self._root.title("Tetris")
 
-        canvas = Canvas(
+        self._canvas = Canvas(
             root=self._root,
             height=config.HEIGHT,
             width=config.WIDTH,
@@ -46,7 +46,9 @@ class Game:
             padding=config.PADDING,
         )
 
-        self._grid = Grid(canvas)
+        self._grid = Grid(self._canvas)
+
+        self._active = False
 
         # initial block
         self._active_block = self._get_random_block()
@@ -59,8 +61,8 @@ class Game:
         Start the game
         """
 
+        self._active = True
         self._active_block.activate()
-
         self._root.mainloop()
 
     def _bind_keys(self) -> None:
@@ -128,7 +130,16 @@ class Game:
 
         self._grid.clear_full_rows()
         self._active_block = self._get_random_block()
-        self._active_block.activate()
+        if not self._active_block.activate():
+            # game is over
+            self._end_game()
+    
+    def _end_game(self) -> None:
+        def end_game_and_relaunch():
+            self._root.destroy()
+            launch_game()
+
+        self._canvas.display_game_over(start_over_fn=end_game_and_relaunch)
 
     def _get_random_block(self) -> Block:
         """

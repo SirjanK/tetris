@@ -44,6 +44,8 @@ class Block(ABC):
         # now add all the points
         for point in self._points:
             self._grid.add_point(point)
+        
+        return True
 
     def translate(self, dx: int, dy: int) -> bool:
         """
