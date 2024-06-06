@@ -126,7 +126,7 @@ class Game:
         Start the next block state
         """
 
-        # self._grid.clear_rows()
+        self._grid.clear_full_rows()
         self._active_block = self._get_random_block()
         self._active_block.activate()
 

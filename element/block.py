@@ -72,7 +72,7 @@ class Block(ABC):
         }
 
         if self._grid.batch_translate(point_deltas):
-            self._rotation_state += 1
+            self._rotation_state = (self._rotation_state + 1) % 4
 
     def remove(self) -> None:
         """
