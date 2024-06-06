@@ -71,7 +71,8 @@ class Block(ABC):
             point: delta for point, delta in zip(self._points, deltas)
         }
 
-        return self._translate_with_deltas(point_deltas)
+        if self._grid.batch_translate(point_deltas):
+            self._rotation_state += 1
 
     def remove(self) -> None:
         """

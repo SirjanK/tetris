@@ -128,7 +128,7 @@ class Game:
 
         # self._grid.clear_rows()
         self._active_block = self._get_random_block()
-        self._active_block.raster()
+        self._active_block.activate()
 
     def _get_random_block(self) -> Block:
         """
