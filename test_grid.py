@@ -298,7 +298,7 @@ def test_clear_rows_single():
     grid.add_point(Point(x=1, y=5, color='black'))
 
     # clear the row
-    grid.clear_full_rows()
+    assert grid.clear_full_rows() == 1
 
     # test correctness
     def _check_get(x: int, y: int):
@@ -336,7 +336,7 @@ def test_clear_rows_top():
     grid.add_point(Point(x=4, y=18, color='black'))
 
     # clear the row
-    grid.clear_full_rows()
+    assert grid.clear_full_rows() == 1
 
     # test correctness
     def _check_get(x: int, y: int):
@@ -376,7 +376,7 @@ def test_clear_rows_multiple():
     grid.add_point(Point(x=7, y=1, color='black'))
 
     # clear the rows
-    grid.clear_full_rows()
+    assert grid.clear_full_rows() == 3
 
     # test correctness
     def _check_get(x: int, y: int):

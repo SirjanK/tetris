@@ -111,14 +111,16 @@ class Grid:
         
         return True
 
-    def clear_full_rows(self) -> None:
+    def clear_full_rows(self) -> int:
         """
         Clear any full rows on the board
+
+        :return: number of rows cleared
         """
 
         # Iterate bottom up - if we detect a full row, clear it; shift
         # subsequent rows down
-        shift_amt = 0
+        num_rows_cleared = 0
         for row_idx in range(self.height - 1, -1, -1):
             if self._row_counts[row_idx] >= self.width:
                 # full row, clear and increment shift amt
@@ -126,14 +128,16 @@ class Grid:
                     if point is not None:
                         self.remove(point)
                 
-                shift_amt += 1
-            elif shift_amt > 0:
+                num_rows_cleared += 1
+            elif num_rows_cleared > 0:
                 # we need to shift this row
                 point_deltas = dict()
                 for point in self._points[row_idx]:
                     if point is not None:
-                        point_deltas[point] = (0, shift_amt)
+                        point_deltas[point] = (0, num_rows_cleared)
                 self.batch_translate(point_deltas)
+        
+        return num_rows_cleared
 
     def bind_key_listener(self, key: str, fn: Callable) -> None:
         """
