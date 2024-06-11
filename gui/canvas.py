@@ -92,9 +92,12 @@ class Canvas:
 
         return 0 <= x < self.width and 0 <= y < self.height
     
-    def display_game_over(self, start_over_fn: Callable):
+    def display_game_over(self, start_over_fn: Callable, score: int):
         """
         Create a game over screen
+
+        :param start_over_fn: function to invoke when pressing the start over btn
+        :param score: score to display
         """
 
         canvas_width = self._canvas.winfo_width()
@@ -102,12 +105,16 @@ class Canvas:
         text_x = canvas_width / 2
         text_y = canvas_height / 2
 
+        # TODO add a gray background with this displayed.
         # Create "Game Over" text
         self._canvas.create_text(text_x, text_y, text="Game Over", font=("Arial", 50), fill="white")
 
+        # Display the score
+        self._canvas.create_text(text_x, text_y + 50, text=f"Score: {score}", font=("Arial", 50), fill="white")
+
         # Create "Start Over" button below the rectangle
         button = tk.Button(self._root, text="Start Over", command=start_over_fn)
-        self._canvas.create_window(text_x, text_y + 50, window=button)
+        self._canvas.create_window(text_x, text_y + 100, window=button)
     
     def _create_rectangle(self, point: Point) -> None:
         """

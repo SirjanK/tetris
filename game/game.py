@@ -32,8 +32,11 @@ class Game:
         lambda grid: TwoBlock(grid),
     ]
 
+    # array of points gotten for number of rows cleared
+    POINTS = [0, 1, 3, 5, 8]
+
     def __init__(self):
-        self.score = 0
+        self._score = 0
 
         self._root = tk.Tk()
         self._root.title("Tetris")
@@ -128,7 +131,9 @@ class Game:
         Start the next block state
         """
 
-        self._grid.clear_full_rows()
+        num_rows_cleared = self._grid.clear_full_rows()
+        self._score += self.POINTS[num_rows_cleared]
+
         self._active_block = self._get_random_block()
         if not self._active_block.activate():
             # game is over
@@ -139,7 +144,9 @@ class Game:
             self._root.destroy()
             launch_game()
 
-        self._canvas.display_game_over(start_over_fn=end_game_and_relaunch)
+        self._canvas.display_game_over(
+            start_over_fn=end_game_and_relaunch,
+            score=self._score)
 
     def _get_random_block(self) -> Block:
         """
