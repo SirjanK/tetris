@@ -56,6 +56,9 @@ class Game:
         # initial block
         self._active_block = self._get_random_block()
 
+        # saved block
+        self._saved_block = None
+
         # key bindings
         self._bind_keys()
 
@@ -78,6 +81,7 @@ class Game:
         self._grid.bind_key_listener("<Left>", self._move_left)
         self._grid.bind_key_listener("<Right>", self._move_right)
         self._grid.bind_key_listener("<space>", self._move_to_bottom)
+        self._grid.bind_key_listener("<KeyRelease-Shift_L>", self._save_block)
 
     def _rotate(self, event: tk.Event) -> None:
         """
@@ -95,8 +99,7 @@ class Game:
 
         if not self._active_block.translate(dx=0, dy=1):
             # if we could not translate, assign a new one
-            # TODO revisit this logic after we implement timer
-            self._next_block_state()
+            self._settle_block()
 
     def _move_left(self, event: tk.Event) -> None:
         """
@@ -125,14 +128,39 @@ class Game:
 
         # to trigger reset
         self._move_down(event)
+    
+    def _save_block(self, event: tk.Event) -> None:
+        curr_saved_block, self._saved_block = self._saved_block, self._active_block
+
+        # remove saved block and reset its state
+        self._saved_block.remove()
+        self._saved_block.reset()
+
+        if curr_saved_block is None:
+            # start next block state
+            print("starting next block state")
+            self._next_block_state()
+        else:
+            # set next active block as the saved block
+            self._active_block = curr_saved_block
+
+            # activate the block
+            self._active_block.activate()
+    
+    def _settle_block(self) -> None:
+        """
+        Settle the block after being placed
+        """
+
+        num_rows_cleared = self._grid.clear_full_rows()
+        self._score += self.POINTS[num_rows_cleared]
+
+        self._next_block_state()
 
     def _next_block_state(self) -> None:
         """
         Start the next block state
         """
-
-        num_rows_cleared = self._grid.clear_full_rows()
-        self._score += self.POINTS[num_rows_cleared]
 
         self._active_block = self._get_random_block()
         if not self._active_block.activate():

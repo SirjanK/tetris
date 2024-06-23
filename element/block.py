@@ -19,16 +19,12 @@ class Block(ABC):
         """
 
         self._grid = grid
-
-        # list of points
+        self._color = self.get_color()
+        # list of points in the block
         self._points = []
-
-        color = self.get_color()
-        for point_loc in self.get_init_point_locations():
-            x, y = point_loc
-            self._points.append(Point(x, y, color))
-
-        self._rotation_state = 0  # rotation state modulo 4 (across four possible rotations)
+        # rotation state modulo 4 (across four possible rotations)
+        self._rotation_state = 0
+        self._init_state()
 
     def activate(self) -> bool:
         """
@@ -46,6 +42,13 @@ class Block(ABC):
             self._grid.add_point(point)
         
         return True
+    
+    def reset(self):
+        """
+        Reset this block back to its initial state (unactivated)
+        """
+
+        self._init_state()
 
     def translate(self, dx: int, dy: int) -> bool:
         """
@@ -82,7 +85,7 @@ class Block(ABC):
         """
 
         for point in self._points:
-            return self._grid.remove(point)
+            self._grid.remove(point)
 
     @abstractmethod
     def get_init_point_locations(self) -> List[Tuple[int, int]]:
@@ -110,3 +113,15 @@ class Block(ABC):
         """
 
         raise NotImplementedError()
+    
+    def _init_state(self):
+        """
+        Helper function to initialize block state.
+        """
+
+        self._points.clear()
+        for point_loc in self.get_init_point_locations():
+            x, y = point_loc
+            self._points.append(Point(x, y, self._color))
+
+        self._rotation_state = 0
