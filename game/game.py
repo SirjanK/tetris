@@ -11,9 +11,12 @@ from element.tetris_blocks import (
     TwoBlock,
 )
 from configs import config
+from game.synchronize_decorator import synchronized
 
 import tkinter as tk
 import random
+import threading
+import time
 
 
 class Game:
@@ -35,6 +38,9 @@ class Game:
     # array of points gotten for number of rows cleared
     POINTS = [0, 1, 3, 5, 8]
 
+    # seconds to move the active block down
+    MOVE_DOWN_TIME = 1
+
     def __init__(self):
         self._score = 0
 
@@ -50,6 +56,9 @@ class Game:
         )
 
         self._grid = Grid(self._canvas)
+
+        # instance wide lock
+        self._lock = threading.RLock()
 
         self._active = False
 
@@ -69,7 +78,20 @@ class Game:
 
         self._active = True
         self._active_block.activate()
+
+        # start thread to move down the active block periodically
+        periodic_thread = threading.Thread(target=self._periodic_move_down)
+        periodic_thread.daemon = True
+        periodic_thread.start()
+
         self._root.mainloop()
+            
+    def _periodic_move_down(self) -> None:
+        while True:
+            time.sleep(self.MOVE_DOWN_TIME)
+            print("periodic move down")
+            self._move_down(event=None)
+            print("periodic move down exit")
 
     def _bind_keys(self) -> None:
         """
@@ -83,6 +105,7 @@ class Game:
         self._grid.bind_key_listener("<space>", self._move_to_bottom)
         self._grid.bind_key_listener("<KeyRelease-Shift_L>", self._save_block)
 
+    @synchronized
     def _rotate(self, event: tk.Event) -> None:
         """
         Rotate the active block
@@ -91,16 +114,40 @@ class Game:
 
         self._active_block.rotate()
 
+    @synchronized
     def _move_down(self, event: tk.Event) -> None:
         """
         Move down the active block
         :param event: event
         """
 
+        if event is None:
+            print("move down enter event none")
+        else:
+            print("move down enter")
+        self._move_down_unsync()
+        if event is None:
+            print("move down exit event none")
+        else:
+            print("move down exit")
+    
+    def _move_down_unsync(self) -> bool:
+        """
+        Helper unsynchronized function to move down the active block 
+
+        :return: bool that indicates whether we could translate or not
+        """
+
         if not self._active_block.translate(dx=0, dy=1):
+            print("cannot translate, settling")
             # if we could not translate, assign a new one
             self._settle_block()
+            return False
+        
+        print("could translate, returning")
+        return True
 
+    @synchronized
     def _move_left(self, event: tk.Event) -> None:
         """
         Move left the active block
@@ -109,6 +156,7 @@ class Game:
 
         self._active_block.translate(dx=-1, dy=0)
 
+    @synchronized
     def _move_right(self, event: tk.Event) -> None:
         """
         Move right the active block
@@ -117,18 +165,17 @@ class Game:
 
         self._active_block.translate(dx=1, dy=0)
 
+    @synchronized
     def _move_to_bottom(self, event: tk.Event) -> None:
         """
         Move to the bottom the active block
         :param event: event
         """
 
-        while self._active_block.translate(dx=0, dy=1):
+        while self._move_down_unsync():
             continue
-
-        # to trigger reset
-        self._move_down(event)
     
+    @synchronized
     def _save_block(self, event: tk.Event) -> None:
         curr_saved_block, self._saved_block = self._saved_block, self._active_block
 
@@ -138,7 +185,6 @@ class Game:
 
         if curr_saved_block is None:
             # start next block state
-            print("starting next block state")
             self._next_block_state()
         else:
             # set next active block as the saved block
@@ -153,6 +199,7 @@ class Game:
         """
 
         num_rows_cleared = self._grid.clear_full_rows()
+        print("cleared full rows")
         self._score += self.POINTS[num_rows_cleared]
 
         self._next_block_state()
@@ -163,7 +210,9 @@ class Game:
         """
 
         self._active_block = self._get_random_block()
+        print("got random block")
         if not self._active_block.activate():
+            print("ending game")
             # game is over
             self._end_game()
     
