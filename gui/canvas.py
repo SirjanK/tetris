@@ -105,17 +105,33 @@ class Canvas:
         text_x = canvas_width / 2
         text_y = canvas_height / 2
 
-        # TODO add a gray background with this displayed.
+        # Define the padding around the text
+        padding_x = 20
+        padding_y = 20
+
+        # Calculate the rectangle's dimensions based on text size and padding
+        rect_width = 400  # Adjust as needed
+        rect_height = 200  # Adjust as needed
+
+        # Calculate the coordinates for the rectangle
+        rect_x1 = text_x - rect_width / 2 - padding_x
+        rect_y1 = text_y - padding_y
+        rect_x2 = text_x + rect_width / 2 + padding_x
+        rect_y2 = text_y + rect_height + padding_y
+
+        # Draw the rectangle with a gray background
+        self._canvas.create_rectangle(rect_x1, rect_y1, rect_x2, rect_y2, fill="gray", outline="")
+
         # Create "Game Over" text
-        self._canvas.create_text(text_x, text_y, text="Game Over", font=("Arial", 50), fill="white")
+        self._canvas.create_text(text_x, text_y, text="Game Over", font=("Arial", 50), fill="red")
 
         # Display the score
-        self._canvas.create_text(text_x, text_y + 50, text=f"Score: {score}", font=("Arial", 50), fill="white")
+        self._canvas.create_text(text_x, text_y + 50, text=f"Score: {score}", font=("Arial", 50), fill="red")
 
         # Create "Start Over" button below the rectangle
         button = tk.Button(self._root, text="Start Over", command=start_over_fn)
         self._canvas.create_window(text_x, text_y + 100, window=button)
-    
+
     def _create_rectangle(self, point: Point) -> None:
         """
         Create rectangle for a point
