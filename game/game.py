@@ -23,6 +23,8 @@ class Game:
     Manages a single game session.
     """
 
+    GAME_TITLE = "Tetris"
+
     # instantiation functions for blocks
     BLOCK_BUILDERS = [
         lambda grid: SquareBlock(grid),
@@ -40,11 +42,21 @@ class Game:
     # seconds to move the active block down
     MOVE_DOWN_TIME = 1
 
+    # event name for periodic events
+    PERIODIC_EVENT = "<<periodic>>"
+    # other binding names
+    UP_EVENT = "<Up>"
+    DOWN_EVENT = "<Down>"
+    LEFT_EVENT = "<Left>"
+    RIGHT_EVENT = "<Right>"
+    SPACE_EVENT = "<space>"
+    SHIFT_EVENT = "<Shift_L>"
+
     def __init__(self):
         self._score = 0
 
         self._root = tk.Tk()
-        self._root.title("Tetris")
+        self._root.title(self.GAME_TITLE)
 
         self._canvas = Canvas(
             root=self._root,
@@ -83,19 +95,19 @@ class Game:
     def _periodic_move_down(self) -> None:
         while self._active:
             time.sleep(self.MOVE_DOWN_TIME)
-            self._root.event_generate("<<periodic>>", when="tail")
+            self._root.event_generate(self.PERIODIC_EVENT, when="tail")
 
     def _bind_keys(self) -> None:
         """
         Helper method to bind keys
         """
 
-        self._grid.bind_key_listener("<Up>", self._rotate)
-        self._grid.bind_key_listener("<Down>", self._move_down)
-        self._grid.bind_key_listener("<Left>", self._move_left)
-        self._grid.bind_key_listener("<Right>", self._move_right)
-        self._grid.bind_key_listener("<space>", self._move_to_bottom)
-        self._grid.bind_key_listener("<KeyRelease-Shift_L>", self._save_block)
+        self._grid.bind_key_listener(self.UP_EVENT, self._rotate)
+        self._grid.bind_key_listener(self.DOWN_EVENT, self._move_down)
+        self._grid.bind_key_listener(self.LEFT_EVENT, self._move_left)
+        self._grid.bind_key_listener(self.RIGHT_EVENT, self._move_right)
+        self._grid.bind_key_listener(self.SPACE_EVENT, self._move_to_bottom)
+        self._grid.bind_key_listener(self.SHIFT_EVENT, self._save_block)
 
     def _bind_periodic_events(self) -> None:
         """
@@ -216,5 +228,4 @@ class Game:
 
 def launch_game():
     game = Game()
-
     game.start()
