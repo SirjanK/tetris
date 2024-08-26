@@ -10,12 +10,14 @@ from element.tetris_blocks import (
     TBlock,
     TwoBlock,
 )
+from typing import Callable
 from configs import config
 
 import tkinter as tk
 import random
 import threading
 import time
+import os
 
 
 class Game:
@@ -52,7 +54,12 @@ class Game:
     SPACE_EVENT = "<space>"
     SHIFT_EVENT = "<Shift_L>"
 
-    def __init__(self):
+    # output paths for metrics
+    OUT_DIR = "out/"
+    KEYSTROKE_DELTA_FPATH = os.path.join(OUT_DIR, "keystroke_delta.csv")
+
+
+    def __init__(self, log_keystroke_delta: bool = False):
         self._score = 0
 
         self._root = tk.Tk()
@@ -72,11 +79,18 @@ class Game:
         self._active_block = self._get_random_block()
         # saved block
         self._saved_block = None
+        self._keystroke_deltas = None
+        self._last_keystroke_time = None
+        if log_keystroke_delta:
+            # initialize list to store keystroke deltas
+            self._keystroke_deltas = []
+            # last keystroke time - for now initialize to zero, will be updated in start()
+            self._last_keystroke_time = 0
         # key bindings
         self._bind_keys()
         # event bindings
         self._bind_periodic_events()
-
+    
     def start(self) -> None:
         """
         Start the game
@@ -90,7 +104,21 @@ class Game:
         periodic_thread.daemon = True
         periodic_thread.start()
 
+        if self._last_keystroke_time is not None:
+            # set last keystroke time to current time
+            self._last_keystroke_time = time.time()
+
         self._root.mainloop()
+    
+    def reset(self) -> None:
+        """
+        Reset the game
+        """
+
+        if self._keystroke_deltas is not None:
+            self._keystroke_deltas = []
+        
+        self._root = tk.Tk()
             
     def _periodic_move_down(self) -> None:
         while self._active:
@@ -102,12 +130,32 @@ class Game:
         Helper method to bind keys
         """
 
-        self._grid.bind_key_listener(self.UP_EVENT, self._rotate)
-        self._grid.bind_key_listener(self.DOWN_EVENT, self._move_down)
-        self._grid.bind_key_listener(self.LEFT_EVENT, self._move_left)
-        self._grid.bind_key_listener(self.RIGHT_EVENT, self._move_right)
-        self._grid.bind_key_listener(self.SPACE_EVENT, self._move_to_bottom)
-        self._grid.bind_key_listener(self.SHIFT_EVENT, self._save_block)
+        def wrap(fn: Callable):
+            if self._last_keystroke_time is None:
+                return fn
+
+            def wrapped_fn(event: tk.Event):
+                self._record_keystroke_delta()
+                fn(event)
+            
+            return wrapped_fn
+
+        self._grid.bind_key_listener(self.UP_EVENT, wrap(self._rotate))
+        self._grid.bind_key_listener(self.DOWN_EVENT, wrap(self._move_down))
+        self._grid.bind_key_listener(self.LEFT_EVENT, wrap(self._move_left))
+        self._grid.bind_key_listener(self.RIGHT_EVENT, wrap(self._move_right))
+        self._grid.bind_key_listener(self.SPACE_EVENT, wrap(self._move_to_bottom))
+        self._grid.bind_key_listener(self.SHIFT_EVENT, wrap(self._save_block))
+    
+    def _record_keystroke_delta(self) -> None:
+        """
+        Record the keystroke delta
+        """
+
+        curr_time = time.time()
+        delta = curr_time - self._last_keystroke_time
+        self._keystroke_deltas.append(delta)
+        self._last_keystroke_time = curr_time
 
     def _bind_periodic_events(self) -> None:
         """
@@ -211,9 +259,22 @@ class Game:
     def _end_game(self) -> None:
         def end_game_and_relaunch():
             self._root.destroy()
-            launch_game()
-
+            launch_game(log_keystroke_delta=self._keystroke_deltas is not None)
+        
         self._active = False
+
+        # dump keystroke deltas to file
+        if self._keystroke_deltas is not None:
+            # Create the output directory if it doesn't exist
+            os.makedirs(self.OUT_DIR, exist_ok=True)
+            
+            try:
+                with open(self.KEYSTROKE_DELTA_FPATH, "w") as f:
+                    for delta in self._keystroke_deltas:
+                        f.write(f"{delta}\n")
+            except IOError as e:
+                print(f"Error writing to file: {e}")
+
         self._canvas.display_game_over(
             start_over_fn=end_game_and_relaunch,
             score=self._score)
@@ -226,6 +287,6 @@ class Game:
         return random.choice(self.BLOCK_BUILDERS)(self._grid)
 
 
-def launch_game():
-    game = Game()
+def launch_game(log_keystroke_delta: bool = False):
+    game = Game(log_keystroke_delta=log_keystroke_delta)
     game.start()

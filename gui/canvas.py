@@ -27,7 +27,6 @@ class Canvas:
 
         self._cell_size = cell_size
         self._padding = padding
-
         self._canvas = self._init_canvas()
 
     def raster_point(self, point: Point) -> None:
