@@ -10,7 +10,7 @@ from element.tetris_blocks import (
     TBlock,
     TwoBlock,
 )
-from typing import Callable
+from typing import Callable, Optional
 from configs import config
 
 import tkinter as tk
@@ -46,6 +46,7 @@ class Game:
 
     # event name for periodic events
     PERIODIC_EVENT = "<<periodic>>"
+    END_EVENT = "<<end>>"
     # other binding names
     UP_EVENT = "<Up>"
     DOWN_EVENT = "<Down>"
@@ -57,9 +58,10 @@ class Game:
     # output paths for metrics
     OUT_DIR = "out/"
     KEYSTROKE_DELTA_FPATH = os.path.join(OUT_DIR, "keystroke_delta.csv")
+    HUMAN_BENCHMARK_FPATH = os.path.join(OUT_DIR, "human_benchmark.csv")
 
 
-    def __init__(self, log_keystroke_delta: bool = False):
+    def __init__(self, log_keystroke_delta: bool = False, human_benchmark_time: float = None):
         self._score = 0
 
         self._root = tk.Tk()
@@ -86,6 +88,7 @@ class Game:
             self._keystroke_deltas = []
             # last keystroke time - for now initialize to zero, will be updated in start()
             self._last_keystroke_time = 0
+        self._human_benchmark_time = human_benchmark_time
         # key bindings
         self._bind_keys()
         # event bindings
@@ -98,32 +101,37 @@ class Game:
 
         self._active = True
         self._active_block.activate()
-
-        # start thread to move down the active block periodically
-        periodic_thread = threading.Thread(target=self._periodic_move_down)
-        periodic_thread.daemon = True
-        periodic_thread.start()
-
+ 
         if self._last_keystroke_time is not None:
             # set last keystroke time to current time
             self._last_keystroke_time = time.time()
 
+        self._start_time = time.time()
+
+        # start thread to move down the active block periodically
+        self._periodic_thread = threading.Thread(target=self._periodic_move_down)
+        self._periodic_thread.daemon = True
+        self._periodic_thread.start()
+
         self._root.mainloop()
     
-    def reset(self) -> None:
+    def terminate(self, relaunch: bool = False) -> None:
         """
-        Reset the game
+        Terminate the game optionally relaunching it
         """
 
-        if self._keystroke_deltas is not None:
-            self._keystroke_deltas = []
-        
-        self._root = tk.Tk()
-            
+        self._end_game_state()
+        self._shutdown_gui(relaunch=relaunch)
+    
     def _periodic_move_down(self) -> None:
         while self._active:
-            time.sleep(self.MOVE_DOWN_TIME)
             self._root.event_generate(self.PERIODIC_EVENT, when="tail")
+
+            if self._human_benchmark_time is not None:
+                if time.time() - self._start_time >= self._human_benchmark_time:
+                    self._root.event_generate(self.END_EVENT, when="tail")
+            
+            time.sleep(self.MOVE_DOWN_TIME)
 
     def _bind_keys(self) -> None:
         """
@@ -162,7 +170,8 @@ class Game:
         Helper method to bind periodic events in the game
         """
 
-        self._root.bind("<<periodic>>", self._move_down)
+        self._root.bind(self.PERIODIC_EVENT, self._move_down)
+        self._root.bind(self.END_EVENT, lambda _: self.terminate(relaunch=True))
 
     def _rotate(self, event: tk.Event) -> None:
         """
@@ -257,11 +266,7 @@ class Game:
             self._end_game()
     
     def _end_game(self) -> None:
-        def end_game_and_relaunch():
-            self._root.destroy()
-            launch_game(log_keystroke_delta=self._keystroke_deltas is not None)
-        
-        self._active = False
+        self._end_game_state()
 
         # dump keystroke deltas to file
         if self._keystroke_deltas is not None:
@@ -276,9 +281,31 @@ class Game:
                 print(f"Error writing to file: {e}")
 
         self._canvas.display_game_over(
-            start_over_fn=end_game_and_relaunch,
+            start_over_fn=lambda: self._shutdown_gui(relaunch=True),
             score=self._score)
+        
+    def _end_game_state(self) -> None:
+        """
+        End the game state
+        """
 
+        self._active = False
+        self._periodic_thread.join()
+
+        # append score to human benchmark file
+        if self._human_benchmark_time is not None:
+            with open(self.HUMAN_BENCHMARK_FPATH, "a") as f:
+                f.write(f"{self._score}\n")
+    
+    def _shutdown_gui(self, relaunch: bool = False) -> None:
+        """
+        Shutdown the GUI
+        """
+
+        self._root.destroy()
+        if relaunch:
+            launch_game(log_keystroke_delta=self._keystroke_deltas is not None, human_benchmark_time=self._human_benchmark_time)
+    
     def _get_random_block(self) -> Block:
         """
         Get a random block instance
@@ -287,6 +314,6 @@ class Game:
         return random.choice(self.BLOCK_BUILDERS)(self._grid)
 
 
-def launch_game(log_keystroke_delta: bool = False):
-    game = Game(log_keystroke_delta=log_keystroke_delta)
+def launch_game(log_keystroke_delta: bool = False, human_benchmark_time: Optional[float] = None): 
+    game = Game(log_keystroke_delta=log_keystroke_delta, human_benchmark_time=human_benchmark_time)
     game.start()
