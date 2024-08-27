@@ -1,3 +1,4 @@
+from agent.agent import Agent
 from gui.canvas import Canvas
 from element.grid import Grid
 from element.block import Block
@@ -81,18 +82,46 @@ class Game:
     SIM_RESULTS_FPATH = os.path.join(OUT_DIR, "sim_results_{0}.csv")
 
 
-    def __init__(self, mode: Mode, id: str, restart_fn: Callable, log_keystroke_delta: bool = False, human_benchmark_time: float = None):
+    def __init__(self, 
+                 mode: Mode, 
+                 id: str, 
+                 restart_fn: Callable, 
+                 agent: Optional[Agent] = None, 
+                 simulation_time: Optional[float] = None,
+                 simulation_delta_t: Optional[float] = None,
+                 num_simulations: Optional[int] = None,
+                 log_keystroke_delta: bool = False, 
+                 human_benchmark_time: float = None):
         """
         Initialize the game
 
         :param mode: mode to launch tetris
         :param id: id for the game used in outputting metrics
         :param restart_fn: function to restart the game
-        :param log_keystroke_delta: whether to log the keystroke delta
-        :param human_benchmark_time: time period to log the score and reset the game
+
+        SIMULATION MODE REQUIRED ARGUMENTS:
+            :param agent: agent to play the game - only applicable in simulation mode and required in simulation mode
+            :param simulation_time: time period to run one simulation game for
+            :param simulation_delta_t: time period to wait between simulation actions
+            :param num_simulations: number of simulations to run
+
+        HUMAN MODE OPTIONAL ARGUMENTS:
+            :param log_keystroke_delta: whether to log the keystroke delta
+            :param human_benchmark_time: time period to log the score and reset the game
         """
 
-        self._mode = mode
+        # input validation for simulation mode
+        if mode == Mode.SIMULATION:
+            assert agent is not None, "Agent is required in simulation mode"
+            assert simulation_time is not None, "Simulation time is required in simulation mode"
+            assert simulation_delta_t is not None, "Simulation delta time is required in simulation mode"
+            assert num_simulations is not None, "Number of simulations is required in simulation mode"
+
+        self._mode = mode 
+        self._agent = agent
+        self._simulation_time = simulation_time
+        self._simulation_delta_t = simulation_delta_t
+        self._num_simulations = num_simulations
         self._id = id
 
         self._score = 0
@@ -150,6 +179,11 @@ class Game:
         self._periodic_thread.daemon = True
         self._periodic_thread.start()
 
+        # start simulation thread
+        self._simulation_thread = threading.Thread(target=self._run_simulation)
+        self._simulation_thread.daemon = True
+        self._simulation_thread.start()
+
         self._root.mainloop()
     
     def terminate(self, relaunch: bool = False) -> None:
@@ -169,6 +203,14 @@ class Game:
                     self._root.event_generate(self.END_EVENT, when="tail")
             
             time.sleep(self.MOVE_DOWN_TIME)
+    
+    def _run_simulation(self) -> None:
+        """
+        Run the simulation
+        """
+
+        for _ in range(self._num_simulations):
+            self._run_simulation_game()
 
     def _bind_keys(self) -> None:
         """
