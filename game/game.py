@@ -13,6 +13,7 @@ from element.tetris_blocks import (
 from typing import Callable, Optional
 from configs import config
 
+from enum import Enum
 import tkinter as tk
 import random
 import threading
@@ -20,11 +21,29 @@ import time
 import os
 
 
+class Mode(Enum):
+    HUMAN = 1
+    SIMULATION = 2
+
+
+class Action(Enum):
+    ROTATE = 1
+    MOVE_DOWN = 2
+    MOVE_LEFT = 3
+    MOVE_RIGHT = 4
+    MOVE_TO_BOTTOM = 5
+    SAVE_BLOCK = 6
+
+    @property
+    def binding(self):
+        return f"<<{self.name}>>"
+
+
 class Game:
     """
     Manages a single game session.
     """
-
+ 
     GAME_TITLE = "Tetris"
 
     # instantiation functions for blocks
@@ -47,7 +66,7 @@ class Game:
     # event name for periodic events
     PERIODIC_EVENT = "<<periodic>>"
     END_EVENT = "<<end>>"
-    # other binding names
+    # binding names for arrow keys during human gameplay
     UP_EVENT = "<Up>"
     DOWN_EVENT = "<Down>"
     LEFT_EVENT = "<Left>"
@@ -57,11 +76,25 @@ class Game:
 
     # output paths for metrics
     OUT_DIR = "out/"
-    KEYSTROKE_DELTA_FPATH = os.path.join(OUT_DIR, "keystroke_delta.csv")
-    HUMAN_BENCHMARK_FPATH = os.path.join(OUT_DIR, "human_benchmark.csv")
+    KEYSTROKE_DELTA_FPATH = os.path.join(OUT_DIR, "keystroke_delta_{0}.csv")
+    HUMAN_BENCHMARK_FPATH = os.path.join(OUT_DIR, "human_benchmark_{0}.csv")
+    SIM_RESULTS_FPATH = os.path.join(OUT_DIR, "sim_results_{0}.csv")
 
 
-    def __init__(self, log_keystroke_delta: bool = False, human_benchmark_time: float = None):
+    def __init__(self, mode: Mode, id: str, restart_fn: Callable, log_keystroke_delta: bool = False, human_benchmark_time: float = None):
+        """
+        Initialize the game
+
+        :param mode: mode to launch tetris
+        :param id: id for the game used in outputting metrics
+        :param restart_fn: function to restart the game
+        :param log_keystroke_delta: whether to log the keystroke delta
+        :param human_benchmark_time: time period to log the score and reset the game
+        """
+
+        self._mode = mode
+        self._id = id
+
         self._score = 0
 
         self._root = tk.Tk()
@@ -88,7 +121,11 @@ class Game:
             self._keystroke_deltas = []
             # last keystroke time - for now initialize to zero, will be updated in start()
             self._last_keystroke_time = 0
+            self._keystroke_delta_fpath = self.KEYSTROKE_DELTA_FPATH.format(self._id)
         self._human_benchmark_time = human_benchmark_time
+        self._human_benchmark_fpath = self.HUMAN_BENCHMARK_FPATH.format(self._id)
+        self._sim_results_fpath = self.SIM_RESULTS_FPATH.format(self._id)
+        self._restart_fn = restart_fn
         # key bindings
         self._bind_keys()
         # event bindings
@@ -148,12 +185,20 @@ class Game:
             
             return wrapped_fn
 
-        self._grid.bind_key_listener(self.UP_EVENT, wrap(self._rotate))
-        self._grid.bind_key_listener(self.DOWN_EVENT, wrap(self._move_down))
-        self._grid.bind_key_listener(self.LEFT_EVENT, wrap(self._move_left))
-        self._grid.bind_key_listener(self.RIGHT_EVENT, wrap(self._move_right))
-        self._grid.bind_key_listener(self.SPACE_EVENT, wrap(self._move_to_bottom))
-        self._grid.bind_key_listener(self.SHIFT_EVENT, wrap(self._save_block))
+        if self._mode == Mode.HUMAN:
+            self._grid.bind_key_listener(self.UP_EVENT, wrap(self._rotate))
+            self._grid.bind_key_listener(self.DOWN_EVENT, wrap(self._move_down))
+            self._grid.bind_key_listener(self.LEFT_EVENT, wrap(self._move_left))
+            self._grid.bind_key_listener(self.RIGHT_EVENT, wrap(self._move_right))
+            self._grid.bind_key_listener(self.SPACE_EVENT, wrap(self._move_to_bottom))
+            self._grid.bind_key_listener(self.SHIFT_EVENT, wrap(self._save_block))
+        else:  # sim
+            self._grid.bind_key_listener(Action.ROTATE.binding, wrap(self._rotate))
+            self._grid.bind_key_listener(Action.MOVE_DOWN.binding, wrap(self._move_down))
+            self._grid.bind_key_listener(Action.MOVE_LEFT.binding, wrap(self._move_left))
+            self._grid.bind_key_listener(Action.MOVE_RIGHT.binding, wrap(self._move_right))
+            self._grid.bind_key_listener(Action.MOVE_TO_BOTTOM.binding, wrap(self._move_to_bottom))
+            self._grid.bind_key_listener(Action.SAVE_BLOCK.binding, wrap(self._save_block))
     
     def _record_keystroke_delta(self) -> None:
         """
@@ -274,7 +319,7 @@ class Game:
             os.makedirs(self.OUT_DIR, exist_ok=True)
             
             try:
-                with open(self.KEYSTROKE_DELTA_FPATH, "w") as f:
+                with open(self._keystroke_delta_fpath, "w") as f:
                     for delta in self._keystroke_deltas:
                         f.write(f"{delta}\n")
             except IOError as e:
@@ -294,7 +339,7 @@ class Game:
 
         # append score to human benchmark file
         if self._human_benchmark_time is not None:
-            with open(self.HUMAN_BENCHMARK_FPATH, "a") as f:
+            with open(self._human_benchmark_fpath, "a") as f:
                 f.write(f"{self._score}\n")
     
     def _shutdown_gui(self, relaunch: bool = False) -> None:
@@ -304,7 +349,7 @@ class Game:
 
         self._root.destroy()
         if relaunch:
-            launch_game(log_keystroke_delta=self._keystroke_deltas is not None, human_benchmark_time=self._human_benchmark_time)
+            self._restart_fn()
     
     def _get_random_block(self) -> Block:
         """
@@ -312,8 +357,3 @@ class Game:
         """
 
         return random.choice(self.BLOCK_BUILDERS)(self._grid)
-
-
-def launch_game(log_keystroke_delta: bool = False, human_benchmark_time: Optional[float] = None): 
-    game = Game(log_keystroke_delta=log_keystroke_delta, human_benchmark_time=human_benchmark_time)
-    game.start()
