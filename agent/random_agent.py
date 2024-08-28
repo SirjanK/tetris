@@ -11,5 +11,5 @@ class RandomAgent(Agent):
 
     ACTIONS = list(Action)
 
-    def act(self, observation: np.ndarray) -> Action: 
+    def get_action(self, observation: np.ndarray) -> Action: 
         return random.choice(self.ACTIONS)

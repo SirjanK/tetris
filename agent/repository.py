@@ -11,19 +11,14 @@ class AgentType(Enum):
     RANDOM = 0
 
 
-class AgentRepository:
+def get_agent(self, agent_type: AgentType) -> Agent:
     """
-    Repository for agents
+    Get an agent instance given an agent type
     """
 
-    def get_agent(self, agent_type: AgentType) -> Agent:
-        """
-        Get an agent instance given an agent type
-        """
-
-        match agent_type:
-            case AgentType.RANDOM:
-                return RandomAgent()
-            case _:
-                raise ValueError(f"Unsupported agent type: {agent_type}")
+    match agent_type:
+        case AgentType.RANDOM:
+            return RandomAgent()
+        case _:
+            raise ValueError(f"Unsupported agent type: {agent_type}")
 

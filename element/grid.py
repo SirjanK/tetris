@@ -1,6 +1,6 @@
 from gui.canvas import Canvas
 from element.point import Point
-
+import numpy as np
 from typing import Optional, Callable, List, Dict, Tuple
 
 
@@ -159,6 +159,22 @@ class Grid:
         """
 
         return self._canvas.is_inbounds(x, y) and self.get_point(x, y) is None
+    
+    def get_observation(self) -> np.ndarray:
+        """
+        Get the observation of the grid
+        An observation is a binary matrix of size H x W where a value of 1 indicates that the cell is occupied
+
+        :return: observation
+        """
+
+        observation = np.zeros((self.height, self.width), dtype=bool)
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.get_point(x, y) is not None:
+                    observation[y, x] = True
+        
+        return observation
     
     def _add_occupancy(self, point: Point) -> None:
         """

@@ -85,11 +85,9 @@ class Game:
     def __init__(self, 
                  mode: Mode, 
                  id: str, 
-                 restart_fn: Callable, 
                  agent: Optional[Agent] = None, 
                  simulation_time: Optional[float] = None,
                  simulation_delta_t: Optional[float] = None,
-                 num_simulations: Optional[int] = None,
                  log_keystroke_delta: bool = False, 
                  human_benchmark_time: float = None):
         """
@@ -97,13 +95,11 @@ class Game:
 
         :param mode: mode to launch tetris
         :param id: id for the game used in outputting metrics
-        :param restart_fn: function to restart the game
 
         SIMULATION MODE REQUIRED ARGUMENTS:
             :param agent: agent to play the game - only applicable in simulation mode and required in simulation mode
             :param simulation_time: time period to run one simulation game for
             :param simulation_delta_t: time period to wait between simulation actions
-            :param num_simulations: number of simulations to run
 
         HUMAN MODE OPTIONAL ARGUMENTS:
             :param log_keystroke_delta: whether to log the keystroke delta
@@ -115,13 +111,11 @@ class Game:
             assert agent is not None, "Agent is required in simulation mode"
             assert simulation_time is not None, "Simulation time is required in simulation mode"
             assert simulation_delta_t is not None, "Simulation delta time is required in simulation mode"
-            assert num_simulations is not None, "Number of simulations is required in simulation mode"
 
         self._mode = mode 
         self._agent = agent
         self._simulation_time = simulation_time
         self._simulation_delta_t = simulation_delta_t
-        self._num_simulations = num_simulations
         self._id = id
 
         self._score = 0
@@ -139,6 +133,8 @@ class Game:
 
         self._grid = Grid(self._canvas)
         self._active = False
+        # state variable to check if the reset button has been invoked
+        self._reset_invoked = False
         # initial block
         self._active_block = self._get_random_block()
         # saved block
@@ -154,15 +150,16 @@ class Game:
         self._human_benchmark_time = human_benchmark_time
         self._human_benchmark_fpath = self.HUMAN_BENCHMARK_FPATH.format(self._id)
         self._sim_results_fpath = self.SIM_RESULTS_FPATH.format(self._id)
-        self._restart_fn = restart_fn
         # key bindings
         self._bind_keys()
         # event bindings
         self._bind_periodic_events()
     
-    def start(self) -> None:
+    def run(self) -> bool:
         """
-        Start the game
+        Start and run the game
+
+        :return: bool indicating if the game should be relaunched (reset button invoked)
         """
 
         self._active = True
@@ -185,14 +182,15 @@ class Game:
         self._simulation_thread.start()
 
         self._root.mainloop()
+        return self._reset_invoked
     
-    def terminate(self, relaunch: bool = False) -> None:
+    def terminate(self) -> None:
         """
-        Terminate the game optionally relaunching it
+        Terminate the game
         """
 
         self._end_game_state()
-        self._shutdown_gui(relaunch=relaunch)
+        self._shutdown_gui()
     
     def _periodic_move_down(self) -> None:
         while self._active:
@@ -209,8 +207,13 @@ class Game:
         Run the simulation
         """
 
-        for _ in range(self._num_simulations):
-            self._run_simulation_game()
+        t = time.time()
+        while self._active:
+            action = self._agent.get_action(self._grid.get_observation())
+            # wait until the time period has elapsed since the last action was executed
+            time.sleep(max(self._simulation_delta_t - (time.time() - t), 0))
+            self._root.event_generate(action.binding, when="tail")
+            t = time.time()
 
     def _bind_keys(self) -> None:
         """
@@ -258,7 +261,7 @@ class Game:
         """
 
         self._root.bind(self.PERIODIC_EVENT, self._move_down)
-        self._root.bind(self.END_EVENT, lambda _: self.terminate(relaunch=True))
+        self._root.bind(self.END_EVENT, self.terminate)
 
     def _rotate(self, event: tk.Event) -> None:
         """
@@ -367,8 +370,12 @@ class Game:
             except IOError as e:
                 print(f"Error writing to file: {e}")
 
+        def on_start_over_clicked():
+            self._reset_invoked = True
+            self._shutdown_gui()
+
         self._canvas.display_game_over(
-            start_over_fn=lambda: self._shutdown_gui(relaunch=True),
+            start_over_fn=on_start_over_clicked,
             score=self._score)
         
     def _end_game_state(self) -> None:
@@ -384,14 +391,12 @@ class Game:
             with open(self._human_benchmark_fpath, "a") as f:
                 f.write(f"{self._score}\n")
     
-    def _shutdown_gui(self, relaunch: bool = False) -> None:
+    def _shutdown_gui(self) -> None:
         """
         Shutdown the GUI
         """
 
         self._root.destroy()
-        if relaunch:
-            self._restart_fn()
     
     def _get_random_block(self) -> Block:
         """

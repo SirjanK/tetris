@@ -5,9 +5,9 @@ from game.game import Action
 
 class Agent(ABC):
     @abstractmethod
-    def act(self, observation: np.ndarray) -> Action:
+    def get_action(self, observation: np.ndarray) -> Action:
         """
-        Act given an observation
+        Get an action given the observation
 
         :param observation: Observation numpy array
         """
