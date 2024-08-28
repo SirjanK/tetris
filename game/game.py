@@ -61,45 +61,41 @@ class Game:
     # output paths for metrics
     OUT_DIR = "out/"
     KEYSTROKE_DELTA_FPATH = os.path.join(OUT_DIR, "keystroke_delta_{0}.csv")
-    HUMAN_BENCHMARK_FPATH = os.path.join(OUT_DIR, "human_benchmark_{0}.csv")
-    SIM_RESULTS_FPATH = os.path.join(OUT_DIR, "sim_results_{0}.csv")
+    RESULTS_PATH = os.path.join(OUT_DIR, "results_{0}.csv")
 
 
     def __init__(self, 
                  mode: Mode, 
                  id: str, 
+                 duration: Optional[float] = None,
                  agent: Optional[Agent] = None, 
-                 simulation_time: Optional[float] = None,
                  simulation_delta_t: Optional[float] = None,
-                 log_keystroke_delta: bool = False, 
-                 human_benchmark_time: float = None):
+                 log_keystroke_delta: bool = False):
         """
         Initialize the game
 
         :param mode: mode to launch tetris
         :param id: id for the game used in outputting metrics
+        :param duration: optional time period to run the game for (applicable to both modes)
 
         SIMULATION MODE REQUIRED ARGUMENTS:
             :param agent: agent to play the game - only applicable in simulation mode and required in simulation mode
-            :param simulation_time: time period to run one simulation game for
             :param simulation_delta_t: time period to wait between simulation actions
 
         HUMAN MODE OPTIONAL ARGUMENTS:
             :param log_keystroke_delta: whether to log the keystroke delta
-            :param human_benchmark_time: time period to log the score and reset the game
         """
 
         # input validation for simulation mode
         if mode == Mode.SIMULATION:
             assert agent is not None, "Agent is required in simulation mode"
-            assert simulation_time is not None, "Simulation time is required in simulation mode"
             assert simulation_delta_t is not None, "Simulation delta time is required in simulation mode"
 
         self._mode = mode 
         self._agent = agent
-        self._simulation_time = simulation_time
         self._simulation_delta_t = simulation_delta_t
         self._id = id
+        self._duration = duration
 
         self._score = 0
 
@@ -130,9 +126,7 @@ class Game:
             # last keystroke time - for now initialize to zero, will be updated in start()
             self._last_keystroke_time = 0
             self._keystroke_delta_fpath = self.KEYSTROKE_DELTA_FPATH.format(self._id)
-        self._human_benchmark_time = human_benchmark_time
-        self._human_benchmark_fpath = self.HUMAN_BENCHMARK_FPATH.format(self._id)
-        self._sim_results_fpath = self.SIM_RESULTS_FPATH.format(self._id)
+        self._results_fpath = self.RESULTS_PATH.format(self._id)
         # key bindings
         self._bind_keys()
         # event bindings
@@ -180,8 +174,8 @@ class Game:
         while self._active:
             self._root.event_generate(self.PERIODIC_EVENT, when="tail")
 
-            if self._human_benchmark_time is not None:
-                if time.time() - self._start_time >= self._human_benchmark_time:
+            if self._duration is not None:
+                if time.time() - self._start_time >= self._duration:
                     self._root.event_generate(self.END_EVENT, when="tail")
             
             time.sleep(self.MOVE_DOWN_TIME)
@@ -204,17 +198,17 @@ class Game:
         Helper method to bind keys
         """
 
-        def wrap(fn: Callable):
-            if self._last_keystroke_time is None:
-                return fn
-
-            def wrapped_fn(event: tk.Event):
-                self._record_keystroke_delta()
-                fn(event)
-            
-            return wrapped_fn
-
         if self._mode == Mode.HUMAN:
+            def wrap(fn: Callable):
+                if self._last_keystroke_time is None:
+                    return fn
+
+                def wrapped_fn(event: tk.Event):
+                    self._record_keystroke_delta()
+                    fn(event)
+            
+                return wrapped_fn
+
             self._grid.bind_key_listener(self.UP_EVENT, wrap(self._rotate))
             self._grid.bind_key_listener(self.DOWN_EVENT, wrap(self._move_down))
             self._grid.bind_key_listener(self.LEFT_EVENT, wrap(self._move_left))
@@ -222,12 +216,12 @@ class Game:
             self._grid.bind_key_listener(self.SPACE_EVENT, wrap(self._move_to_bottom))
             self._grid.bind_key_listener(self.SHIFT_EVENT, wrap(self._save_block))
         else:  # sim
-            self._grid.bind_key_listener(Action.ROTATE.binding, wrap(self._rotate))
-            self._grid.bind_key_listener(Action.MOVE_DOWN.binding, wrap(self._move_down))
-            self._grid.bind_key_listener(Action.MOVE_LEFT.binding, wrap(self._move_left))
-            self._grid.bind_key_listener(Action.MOVE_RIGHT.binding, wrap(self._move_right))
-            self._grid.bind_key_listener(Action.MOVE_TO_BOTTOM.binding, wrap(self._move_to_bottom))
-            self._grid.bind_key_listener(Action.SAVE_BLOCK.binding, wrap(self._save_block))
+            self._root.bind(Action.ROTATE.binding, self._rotate)
+            self._root.bind(Action.MOVE_DOWN.binding, self._move_down)
+            self._root.bind(Action.MOVE_LEFT.binding, self._move_left)
+            self._root.bind(Action.MOVE_RIGHT.binding, self._move_right)
+            self._root.bind(Action.MOVE_TO_BOTTOM.binding, self._move_to_bottom)
+            self._root.bind(Action.SAVE_BLOCK.binding, self._save_block)
     
     def _record_keystroke_delta(self) -> None:
         """
@@ -245,7 +239,7 @@ class Game:
         """
 
         self._root.bind(self.PERIODIC_EVENT, self._move_down)
-        self._root.bind(self.END_EVENT, self.terminate)
+        self._root.bind(self.END_EVENT, lambda _: self.terminate())
 
     def _rotate(self, event: tk.Event) -> None:
         """
@@ -337,30 +331,30 @@ class Game:
         self._active_block = self._get_random_block()
         if not self._active_block.activate():
             # game is over
-            self._end_game()
+            self._game_over()
     
-    def _end_game(self) -> None:
-        self._end_game_state()
+    def _game_over(self) -> None:
+        if self._mode == Mode.HUMAN:
+            self._end_game_state()
 
-        # dump keystroke deltas to file
-        if self._keystroke_deltas is not None:
-            # Create the output directory if it doesn't exist
-            os.makedirs(self.OUT_DIR, exist_ok=True)
-            
-            try:
+            # dump keystroke deltas to file
+            if self._keystroke_deltas is not None:
+                # Create the output directory if it doesn't exist
+                os.makedirs(self.OUT_DIR, exist_ok=True)
+                
                 with open(self._keystroke_delta_fpath, "w") as f:
                     for delta in self._keystroke_deltas:
                         f.write(f"{delta}\n")
-            except IOError as e:
-                print(f"Error writing to file: {e}")
 
-        def on_start_over_clicked():
-            self._reset_invoked = True
-            self._shutdown_gui()
+            def on_start_over_clicked():
+                self._reset_invoked = True
+                self._shutdown_gui()
 
-        self._canvas.display_game_over(
-            start_over_fn=on_start_over_clicked,
-            score=self._score)
+            self._canvas.display_game_over(
+                start_over_fn=on_start_over_clicked,
+                score=self._score)
+        else:
+            self.terminate()
         
     def _end_game_state(self) -> None:
         """
@@ -369,11 +363,12 @@ class Game:
 
         self._active = False
         self._periodic_thread.join()
+        if self._mode == Mode.SIMULATION:
+            self._simulation_thread.join()
 
-        # append score to human benchmark file
-        if self._human_benchmark_time is not None:
-            with open(self._human_benchmark_fpath, "a") as f:
-                f.write(f"{self._score}\n")
+        # append score to metrics file
+        with open(self._results_fpath, "a") as f:
+            f.write(f"{self._score}\n")
     
     def _shutdown_gui(self) -> None:
         """
