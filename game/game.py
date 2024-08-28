@@ -186,12 +186,13 @@ class Game:
         """
 
         t = time.time()
+        action = self._agent.get_action(self._grid.get_observation())
         while self._active:
+            self._root.event_generate(action.binding, when="tail")
+            t = time.time()
             action = self._agent.get_action(self._grid.get_observation())
             # wait until the time period has elapsed since the last action was executed
             time.sleep(max(self._simulation_delta_t - (time.time() - t), 0))
-            self._root.event_generate(action.binding, when="tail")
-            t = time.time()
 
     def _bind_keys(self) -> None:
         """
@@ -329,7 +330,7 @@ class Game:
         """
 
         self._active_block = self._get_random_block()
-        if not self._active_block.activate():
+        if not self._active_block.activate() and self._active:
             # game is over
             self._game_over()
     
