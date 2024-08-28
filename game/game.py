@@ -91,17 +91,18 @@ class Game:
             assert agent is not None, "Agent is required in simulation mode"
             assert simulation_delta_t is not None, "Simulation delta time is required in simulation mode"
 
+        # Attribute variables
         self._mode = mode 
-        self._agent = agent
-        self._simulation_delta_t = simulation_delta_t
         self._id = id
         self._duration = duration
 
-        self._score = 0
+        # Simulation mode attributes
+        self._agent = agent
+        self._simulation_delta_t = simulation_delta_t
 
+        # Game grid attributes
         self._root = tk.Tk()
         self._root.title(self.GAME_TITLE)
-
         self._canvas = Canvas(
             root=self._root,
             height=config.HEIGHT,
@@ -109,15 +110,21 @@ class Game:
             cell_size=config.CELL_SIZE,
             padding=config.PADDING,
         )
-
         self._grid = Grid(self._canvas)
+
+        # Game state attributes
+        self._score = 0
         self._active = False
+        # state variable to check if saved block is active (this can only occur once before a new block is spawned)
+        self._saved_block_active = False
         # state variable to check if the reset button has been invoked
         self._reset_invoked = False
         # initial block
         self._active_block = self._get_random_block()
         # saved block
         self._saved_block = None
+
+        # keystroke delta attributes
         self._keystroke_deltas = None
         self._last_keystroke_time = None
         if log_keystroke_delta:
@@ -126,9 +133,13 @@ class Game:
             # last keystroke time - for now initialize to zero, will be updated in start()
             self._last_keystroke_time = 0
             self._keystroke_delta_fpath = self.KEYSTROKE_DELTA_FPATH.format(self._id)
+
+        # results attributes
         self._results_fpath = self.RESULTS_PATH.format(self._id)
+
         # key bindings
         self._bind_keys()
+
         # event bindings
         self._bind_periodic_events()
     
@@ -298,6 +309,15 @@ class Game:
             continue
     
     def _save_block(self, event: tk.Event) -> None:
+        """
+        Save the active block and replace with the already saved block if it exists
+        """
+
+        if self._saved_block_active:
+            # saved block is already active, do nothing
+            return
+
+        self._saved_block_active = True
         curr_saved_block, self._saved_block = self._saved_block, self._active_block
 
         # remove saved block and reset its state
@@ -329,6 +349,7 @@ class Game:
         Start the next block state
         """
 
+        self._saved_block_active = False
         self._active_block = self._get_random_block()
         if not self._active_block.activate() and self._active:
             # game is over
