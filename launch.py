@@ -1,7 +1,8 @@
 import argparse
 from typing import Optional
 from agent.repository import AgentType, get_agent
-from game.game import Mode, Game
+from game.game import Game
+from game.mode import Mode
 
 
 # Default simulation time and delta t in seconds
@@ -36,7 +37,7 @@ def launch_game(
         return Game(
             mode=mode,
             id=id,
-            agent=get_agent(agent_type),
+            agent=get_agent(agent_type=agent_type) if agent_type is not None else None,
             simulation_time=simulation_time,
             simulation_delta_t=simulation_delta_t,
             log_keystroke_delta=log_keystroke_delta, 

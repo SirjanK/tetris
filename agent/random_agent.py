@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from agent.agent import Agent
-from game.game import Action
+from game.action import Action
 
 
 class RandomAgent(Agent):

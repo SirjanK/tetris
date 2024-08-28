@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from game.game import Action
+from game.action import Action
 
 
 class Agent(ABC):

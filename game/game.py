@@ -13,31 +13,14 @@ from element.tetris_blocks import (
 )
 from typing import Callable, Optional
 from configs import config
+from game.mode import Mode
+from game.action import Action
 
-from enum import Enum
 import tkinter as tk
 import random
 import threading
 import time
 import os
-
-
-class Mode(Enum):
-    HUMAN = 1
-    SIMULATION = 2
-
-
-class Action(Enum):
-    ROTATE = 1
-    MOVE_DOWN = 2
-    MOVE_LEFT = 3
-    MOVE_RIGHT = 4
-    MOVE_TO_BOTTOM = 5
-    SAVE_BLOCK = 6
-
-    @property
-    def binding(self):
-        return f"<<{self.name}>>"
 
 
 class Game:
@@ -177,9 +160,10 @@ class Game:
         self._periodic_thread.start()
 
         # start simulation thread
-        self._simulation_thread = threading.Thread(target=self._run_simulation)
-        self._simulation_thread.daemon = True
-        self._simulation_thread.start()
+        if self._mode == Mode.SIMULATION:
+            self._simulation_thread = threading.Thread(target=self._run_simulation)
+            self._simulation_thread.daemon = True
+            self._simulation_thread.start()
 
         self._root.mainloop()
         return self._reset_invoked

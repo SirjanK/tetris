@@ -11,7 +11,7 @@ class AgentType(Enum):
     RANDOM = 0
 
 
-def get_agent(self, agent_type: AgentType) -> Agent:
+def get_agent(agent_type: AgentType) -> Agent:
     """
     Get an agent instance given an agent type
     """
