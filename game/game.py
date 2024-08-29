@@ -384,13 +384,14 @@ class Game:
         """
 
         self._active = False
+        elapsed_game_time = time.time() - self._start_time
         self._periodic_thread.join()
         if self._mode == Mode.SIMULATION:
             self._simulation_thread.join()
 
-        # append score to metrics file
+        # append score, elapsed time to metrics file
         with open(self._results_fpath, "a") as f:
-            f.write(f"{self._score}\n")
+            f.write(f"{self._score}, {elapsed_game_time}\n")
     
     def _shutdown_gui(self) -> None:
         """
